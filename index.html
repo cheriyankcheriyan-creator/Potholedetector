@@ -1,0 +1,2963 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PotholeGuard — Road Intelligence</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <style>
+        :root {
+            --bg: #0b0f1a;
+            --panel: #111827;
+            --card: #1a2236;
+            --border: #243048;
+            --accent: #3b82f6;
+            --accent2: #06b6d4;
+            --danger: #ef4444;
+            --warn: #f59e0b;
+            --ok: #10b981;
+            --text: #e2e8f0;
+            --muted: #64748b;
+            --mono: 'Space Mono', monospace;
+            --sans: 'DM Sans', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--sans);
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* HEADER */
+        header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 0 20px;
+            height: 56px;
+            background: var(--panel);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            font-family: var(--mono);
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--accent);
+            letter-spacing: 0.05em;
+            white-space: nowrap;
+        }
+
+        .logo span {
+            color: var(--text);
+        }
+
+        .search-wrap {
+            flex: 1;
+            max-width: 560px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .search-wrap input {
+            flex: 1;
+            background: var(--card);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 8px;
+            padding: 8px 14px;
+            font-family: var(--sans);
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-wrap input:focus {
+            border-color: var(--accent);
+        }
+
+        .search-wrap input::placeholder {
+            color: var(--muted);
+        }
+
+        .btn-icon {
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            width: 38px;
+            height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s, transform 0.15s;
+            flex-shrink: 0;
+        }
+
+        .btn-icon:hover {
+            background: #2563eb;
+            transform: scale(1.06);
+        }
+
+        .btn-icon.secondary {
+            background: var(--card);
+            border: 1px solid var(--border);
+        }
+
+        .btn-icon.secondary:hover {
+            background: var(--border);
+        }
+
+        .header-right {
+            margin-left: auto;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .status-pill {
+            font-family: var(--mono);
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: rgba(16, 185, 129, 0.12);
+            color: var(--ok);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 4px;
+        }
+
+        .nav-tab {
+            background: none;
+            border: none;
+            color: var(--muted);
+            font-family: var(--sans);
+            font-size: 13px;
+            font-weight: 500;
+            padding: 6px 12px;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .nav-tab:hover {
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .nav-tab.active {
+            color: var(--accent);
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        /* MAIN */
+        .app-body {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* LEFT SIDEBAR */
+        .left-panel {
+            width: 260px;
+            background: var(--panel);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .panel-section {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .section-title {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Upload area */
+        .media-tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 12px;
+        }
+
+        .media-tab {
+            flex: 1;
+            background: var(--card);
+            border: 1px solid var(--border);
+            color: var(--muted);
+            border-radius: 6px;
+            padding: 7px;
+            font-family: var(--sans);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .media-tab.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        .media-tab:not(.active):hover {
+            color: var(--text);
+        }
+
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: 10px;
+            padding: 20px 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            min-height: 100px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: var(--card);
+            overflow: hidden;
+        }
+
+        .upload-zone:hover {
+            border-color: var(--accent);
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .upload-zone.dragover {
+            border-color: var(--accent);
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .upload-zone i {
+            font-size: 28px;
+            color: var(--muted);
+            opacity: 0.5;
+        }
+
+        .upload-zone p {
+            font-size: 12px;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+
+        .upload-zone .upload-link {
+            color: var(--accent);
+            cursor: pointer;
+        }
+
+        .upload-zone input[type=file] {
+            display: none;
+        }
+
+        /* Preview thumbnail */
+        .upload-preview {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            inset: 0;
+            object-fit: cover;
+            border-radius: 8px;
+            opacity: 0.7;
+        }
+
+        .upload-preview-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .upload-zone:hover .upload-preview-overlay {
+            opacity: 1;
+        }
+
+        .btn-analyze {
+            width: 100%;
+            background: var(--accent);
+            border: none;
+            color: white;
+            border-radius: 8px;
+            padding: 10px;
+            font-family: var(--sans);
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 10px;
+            transition: all 0.2s;
+            letter-spacing: 0.02em;
+        }
+
+        .btn-analyze:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+        }
+
+        .btn-analyze:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Severity legend */
+        .legend-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+        }
+
+        .legend-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            flex-shrink: 0;
+        }
+
+        .legend-dot.severe {
+            background: var(--danger);
+            box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+        }
+
+        .legend-dot.medium {
+            background: var(--warn);
+            box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+        }
+
+        .legend-dot.low {
+            background: var(--ok);
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+        }
+
+        /* Area stats */
+        .stat-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+        }
+
+        .stat-mini {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 6px;
+            text-align: center;
+        }
+
+        .stat-mini-val {
+            font-family: var(--mono);
+            font-size: 22px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .stat-mini-val.severe {
+            color: var(--danger);
+        }
+
+        .stat-mini-val.medium {
+            color: var(--warn);
+        }
+
+        .stat-mini-val.low {
+            color: var(--ok);
+        }
+
+        .stat-mini-label {
+            font-size: 9px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-top: 3px;
+        }
+
+        /* Hazard list */
+        .hazard-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 4px 0;
+        }
+
+        .hazard-list::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .hazard-list::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 2px;
+        }
+
+        .hazard-item {
+            padding: 10px 16px;
+            border-left: 3px solid transparent;
+            cursor: pointer;
+            transition: all 0.15s;
+            border-bottom: 1px solid rgba(36, 48, 72, 0.5);
+        }
+
+        .hazard-item:hover {
+            background: rgba(59, 130, 246, 0.06);
+        }
+
+        .hazard-item.severe {
+            border-left-color: var(--danger);
+        }
+
+        .hazard-item.medium {
+            border-left-color: var(--warn);
+        }
+
+        .hazard-item.low {
+            border-left-color: var(--ok);
+        }
+
+        .hz-name {
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 3px;
+        }
+
+        .hz-meta {
+            display: flex;
+            gap: 8px;
+            font-size: 11px;
+            color: var(--muted);
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+
+        .badge.severe {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--danger);
+        }
+
+        .badge.medium {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--warn);
+        }
+
+        .badge.low {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--ok);
+        }
+
+        .empty-state {
+            padding: 30px 16px;
+            text-align: center;
+            color: var(--muted);
+        }
+
+        .empty-state i {
+            font-size: 28px;
+            opacity: 0.25;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        .empty-state p {
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        /* CENTER: MAP STACK */
+        .map-stack {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            min-width: 0;
+        }
+
+        #world-map {
+            flex: 1;
+            width: 100%;
+        }
+
+        /* Street view panel */
+        .street-view-panel {
+            height: 340px;
+            background: var(--panel);
+            border-top: 2px solid var(--accent);
+            position: relative;
+            flex-shrink: 0;
+            overflow: hidden;
+            display: none;
+        }
+
+        .sv-header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 10;
+            background: linear-gradient(to bottom, rgba(11, 15, 26, 0.97), transparent);
+            padding: 10px 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sv-label {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--accent2);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .sv-coords {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--muted);
+            margin-left: auto;
+        }
+
+        #street-view-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+
+        .resize-handle {
+            height: 6px;
+            background: var(--border);
+            cursor: row-resize;
+            flex-shrink: 0;
+            position: relative;
+            transition: background 0.2s;
+            display: none;
+        }
+
+        .resize-handle.visible {
+            display: block;
+        }
+
+        .resize-handle:hover,
+        .resize-handle.dragging {
+            background: var(--accent);
+        }
+
+        .resize-handle::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 2px;
+            background: var(--muted);
+            border-radius: 2px;
+        }
+
+        .sv-toggle {
+            position: absolute;
+            bottom: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 8px 18px;
+            font-family: var(--sans);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .sv-toggle:hover {
+            background: #2563eb;
+            transform: translateX(-50%) translateY(-2px);
+        }
+
+        .sv-close {
+            background: rgba(0, 0, 0, 0.6);
+            border: none;
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            margin-left: 12px;
+        }
+
+        .sv-close:hover {
+            background: var(--danger);
+        }
+
+        .sv-loading {
+            position: absolute;
+            inset: 0;
+            background: var(--panel);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 14px;
+            z-index: 5;
+        }
+
+        .spinner {
+            width: 36px;
+            height: 36px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        /* NAVIGATION PANEL */
+        .nav-route-panel {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+            background: var(--panel);
+        }
+
+        .nav-route-title {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .route-inputs {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            position: relative;
+        }
+
+        .route-input-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            position: relative;
+        }
+
+        .route-dot {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 800;
+            flex-shrink: 0;
+            font-family: var(--mono);
+            border: 2px solid transparent;
+        }
+
+        .route-dot.from {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .route-dot.to {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--danger);
+            border-color: var(--danger);
+        }
+
+        .route-connector {
+            width: 2px;
+            height: 20px;
+            background: linear-gradient(to bottom, var(--accent), var(--danger));
+            margin-left: 13px;
+            opacity: 0.5;
+            flex-shrink: 0;
+        }
+
+        .route-input {
+            flex: 1;
+            background: var(--card);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 8px;
+            padding: 9px 12px;
+            font-family: var(--sans);
+            font-size: 12px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .route-input:focus {
+            border-color: var(--accent);
+        }
+
+        .route-input::placeholder {
+            color: var(--muted);
+            font-size: 11px;
+        }
+
+        .route-input.filled {
+            border-color: rgba(59, 130, 246, 0.4);
+            color: var(--text);
+        }
+
+        .route-swap-btn {
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            background: var(--card);
+            border: 1px solid var(--border);
+            color: var(--muted);
+            width: 26px;
+            height: 26px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            transition: all 0.2s;
+            z-index: 5;
+        }
+
+        .route-swap-btn:hover {
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .route-action-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .btn-get-route {
+            flex: 1;
+            background: var(--accent);
+            border: none;
+            color: white;
+            border-radius: 8px;
+            padding: 10px;
+            font-family: var(--sans);
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            transition: all 0.2s;
+        }
+
+        .btn-get-route:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+        }
+
+        .btn-clear-route {
+            background: var(--card);
+            border: 1px solid var(--border);
+            color: var(--muted);
+            border-radius: 8px;
+            padding: 10px 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .btn-clear-route:hover {
+            color: var(--danger);
+            border-color: var(--danger);
+        }
+
+        /* Route info bar */
+        .route-info-bar {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-top: 10px;
+            display: none;
+            gap: 0;
+            flex-direction: column;
+        }
+
+        .route-info-bar.visible {
+            display: flex;
+        }
+
+        .route-info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+        }
+
+        .route-info-label {
+            color: var(--muted);
+            font-size: 11px;
+        }
+
+        .route-info-val {
+            font-family: var(--mono);
+            font-weight: 700;
+            color: var(--text);
+            font-size: 13px;
+        }
+
+        .route-info-divider {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 7px 0;
+        }
+
+        .route-hazard-warn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+
+        .route-hazard-warn.danger {
+            color: var(--danger);
+        }
+
+        .route-hazard-warn.ok {
+            color: var(--ok);
+        }
+
+        /* START button */
+        .btn-start-nav {
+            width: 100%;
+            background: linear-gradient(135deg, #10b981, #059669);
+            border: none;
+            color: white;
+            border-radius: 10px;
+            padding: 13px;
+            font-family: var(--sans);
+            font-size: 15px;
+            font-weight: 800;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+            transition: all 0.25s;
+            letter-spacing: 0.03em;
+            box-shadow: 0 4px 20px rgba(16, 185, 129, 0.35);
+        }
+
+        .btn-start-nav.visible {
+            display: flex;
+        }
+
+        .btn-start-nav:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 28px rgba(16, 185, 129, 0.45);
+        }
+
+        .btn-start-nav:active {
+            transform: translateY(0);
+        }
+
+        /* Navigation mode active bar */
+        .nav-active-bar {
+            display: none;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(16, 185, 129, 0.06));
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-top: 10px;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-active-bar.visible {
+            display: flex;
+        }
+
+        .nav-pulse-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--ok);
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5);
+            animation: navPulse 1.5s ease-out infinite;
+            flex-shrink: 0;
+        }
+
+        @keyframes navPulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5);
+            }
+
+            70% {
+                box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+            }
+        }
+
+        .nav-active-text {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--ok);
+        }
+
+        .btn-stop-nav {
+            margin-left: auto;
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: var(--danger);
+            border-radius: 6px;
+            padding: 5px 10px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: var(--sans);
+            transition: all 0.2s;
+        }
+
+        .btn-stop-nav:hover {
+            background: rgba(239, 68, 68, 0.25);
+        }
+
+        /* RIGHT PANEL */
+        .right-panel {
+            width: 300px;
+            background: var(--panel);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .action-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-full {
+            flex: 1;
+            background: var(--card);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 8px;
+            padding: 10px;
+            font-family: var(--sans);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            transition: all 0.2s;
+        }
+
+        .btn-full:hover {
+            background: var(--border);
+        }
+
+        .btn-full.primary {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        .btn-full.primary:hover {
+            background: #2563eb;
+        }
+
+        .location-display {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--accent2);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .location-display i {
+            color: var(--muted);
+        }
+
+        .stat-grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .stat-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-family: var(--mono);
+            font-size: 26px;
+            font-weight: 700;
+            color: var(--accent);
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        /* Alert banner */
+        .alert-bar {
+            position: fixed;
+            top: 64px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            background: var(--danger);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.35);
+            display: none;
+            align-items: center;
+            gap: 8px;
+            animation: dropIn 0.3s ease;
+        }
+
+        .alert-bar.info {
+            background: var(--accent);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.35);
+        }
+
+        .alert-bar.success {
+            background: var(--ok);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
+        }
+
+        @keyframes dropIn {
+            from {
+                opacity: 0;
+                top: 50px;
+            }
+
+            to {
+                opacity: 1;
+                top: 64px;
+            }
+        }
+
+        /* Detection results overlay */
+        .detection-panel {
+            position: fixed;
+            inset: 0;
+            z-index: 5000;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .detection-panel.visible {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .detection-modal {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            width: min(920px, 96vw);
+            max-height: 92vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+            animation: scaleIn 0.3s ease;
+        }
+
+        @keyframes scaleIn {
+            from {
+                transform: scale(0.95);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .modal-title {
+            font-family: var(--mono);
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .modal-close {
+            margin-left: auto;
+            background: var(--card);
+            border: 1px solid var(--border);
+            color: var(--muted);
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .modal-close:hover {
+            background: var(--danger);
+            color: white;
+            border-color: var(--danger);
+        }
+
+        .modal-body {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        .detection-canvas-wrap {
+            flex: 1;
+            position: relative;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        #detectionCanvas {
+            max-width: 100%;
+            max-height: 100%;
+            display: block;
+        }
+
+        .detection-sidebar {
+            width: 260px;
+            flex-shrink: 0;
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            background: var(--panel);
+        }
+
+        .det-results-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            background: var(--card);
+        }
+
+        .det-results-title {
+            font-family: var(--mono);
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .det-count-row {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .det-count {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+        }
+
+        .det-count-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .det-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .det-dot.severe {
+            background: var(--danger);
+        }
+
+        .det-dot.medium {
+            background: var(--warn);
+        }
+
+        .det-count-num {
+            font-family: var(--mono);
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+        .det-count-num.severe {
+            color: var(--danger);
+        }
+
+        .det-count-num.medium {
+            color: var(--warn);
+        }
+
+        .det-divider {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 8px 0;
+        }
+
+        .det-total {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .det-total span:last-child {
+            font-family: var(--mono);
+        }
+
+        .det-items-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 0;
+        }
+
+        .det-items-list::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .det-items-list::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 2px;
+        }
+
+        .det-item {
+            padding: 10px 16px;
+            border-left: 3px solid transparent;
+            border-bottom: 1px solid rgba(36, 48, 72, 0.5);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .det-item:hover {
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .det-item.severe {
+            border-left-color: var(--danger);
+        }
+
+        .det-item.medium {
+            border-left-color: var(--warn);
+        }
+
+        .det-item-name {
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .det-item-meta {
+            font-size: 11px;
+            color: var(--muted);
+            display: flex;
+            gap: 8px;
+        }
+
+        .modal-footer {
+            padding: 14px 20px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .btn-modal {
+            background: var(--card);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 8px;
+            padding: 9px 18px;
+            font-family: var(--sans);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            transition: all 0.2s;
+        }
+
+        .btn-modal:hover {
+            background: var(--border);
+        }
+
+        .btn-modal.primary {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        .btn-modal.primary:hover {
+            background: #2563eb;
+        }
+
+        /* Analyzing overlay */
+        .analyzing-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(11, 15, 26, 0.88);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            z-index: 20;
+            border-radius: 8px;
+        }
+
+        .analyzing-text {
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--accent);
+            letter-spacing: 0.08em;
+        }
+
+        .scan-lines {
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(0deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(59, 130, 246, 0.03) 2px,
+                    rgba(59, 130, 246, 0.03) 4px);
+            animation: scanMove 2s linear infinite;
+            border-radius: 8px;
+        }
+
+        @keyframes scanMove {
+            from {
+                background-position: 0 0;
+            }
+
+            to {
+                background-position: 0 100px;
+            }
+        }
+
+        /* Progress bar */
+        .progress-bar-wrap {
+            width: 200px;
+            background: var(--border);
+            border-radius: 4px;
+            height: 4px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.1s ease;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(2.5);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- HEADER -->
+    <header>
+        <div class="logo">Pothole<span>Guard</span></div>
+        <div class="nav-tabs">
+            <button class="nav-tab active">Dashboard</button>
+            <button class="nav-tab">Reports</button>
+            <button class="nav-tab">Settings</button>
+        </div>
+        <div class="search-wrap">
+            <input type="text" id="locationInput" placeholder="Search any location worldwide…"
+                value="Thrissur, Kerala, India">
+            <button class="btn-icon" onclick="searchLocation()" title="Search"><i class="fas fa-search"></i></button>
+        </div>
+        <div class="header-right">
+            <div class="status-pill">● LIVE</div>
+            <button class="btn-icon secondary" onclick="gotoMyLocation()" title="My Location"><i
+                    class="fas fa-location-crosshairs"></i></button>
+            <button class="btn-icon secondary" title="Admin"><i class="fas fa-user-circle"></i></button>
+        </div>
+    </header>
+
+    <!-- BODY -->
+    <div class="app-body">
+
+        <!-- LEFT PANEL -->
+        <div class="left-panel">
+            <div class="panel-section">
+                <div class="section-title"><i class="fas fa-upload" style="font-size:9px"></i> Upload Media</div>
+                <div class="media-tabs">
+                    <div class="media-tab active" onclick="switchMediaTab(this,'image')">Image</div>
+                    <div class="media-tab" onclick="switchMediaTab(this,'video')">Video</div>
+                </div>
+                <div class="upload-zone" id="uploadZone" ondragover="handleDragOver(event)"
+                    ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)"
+                    onclick="document.getElementById('fileInput').click()">
+                    <i class="fas fa-image" id="uploadIcon"></i>
+                    <p id="uploadText">Drop file here or<br><span class="upload-link">click to browse</span></p>
+                    <input type="file" id="fileInput" accept="image/*" onchange="handleFileSelect(event)">
+                    <img id="uploadPreview" class="upload-preview" style="display:none">
+                    <div class="upload-preview-overlay" id="uploadOverlay" style="display:none">
+                        <i class="fas fa-sync-alt" style="color:white;font-size:18px"></i>
+                        <span style="color:white;font-size:12px;font-weight:600">Change</span>
+                    </div>
+                </div>
+                <button class="btn-analyze" id="analyzeBtn" onclick="analyzeImage()" disabled>
+                    <i class="fas fa-radar"></i> Analyze
+                </button>
+            </div>
+
+            <div class="panel-section">
+                <div class="section-title">Pothole Severity</div>
+                <div class="legend-list">
+                    <div class="legend-item">
+                        <div class="legend-dot severe"></div><span>Severe Pothole (Red)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot medium"></div><span>Mild Pothole (Orange)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot low"></div><span>Speed Hump (Yellow)</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <div class="section-title">Area Statistics</div>
+                <div class="stat-row">
+                    <div class="stat-mini">
+                        <div class="stat-mini-val severe" id="areaStatSevere">0</div>
+                        <div class="stat-mini-label">Severe</div>
+                    </div>
+                    <div class="stat-mini">
+                        <div class="stat-mini-val medium" id="areaStatMild">0</div>
+                        <div class="stat-mini-label">Mild</div>
+                    </div>
+                    <div class="stat-mini">
+                        <div class="stat-mini-val low" id="areaStatHumps">0</div>
+                        <div class="stat-mini-label">Humps</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-section" style="padding-bottom:4px; border-bottom:none">
+                <div class="section-title">Detected Hazards</div>
+            </div>
+            <div class="hazard-list" id="hazardList">
+                <div class="empty-state">
+                    <i class="fas fa-road"></i>
+                    <p>Click on the map then tap <strong>Scan Road</strong>, or upload an image and click
+                        <strong>Analyze</strong>.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAP STACK -->
+        <div class="map-stack">
+            <div id="world-map"></div>
+
+            <button class="sv-toggle" id="svToggle" onclick="openStreetView()">
+                <i class="fas fa-street-view"></i> Street View
+            </button>
+
+            <div class="resize-handle" id="resizeHandle"></div>
+
+            <div class="street-view-panel" id="streetViewPanel">
+                <div class="sv-header">
+                    <i class="fas fa-street-view" style="color:var(--accent2)"></i>
+                    <span class="sv-label">Street View</span>
+                    <span class="sv-coords" id="svCoords">—</span>
+                    <button class="sv-close" onclick="closeStreetView()"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="sv-loading" id="svLoading">
+                    <div class="spinner"></div>
+                    <span style="font-size:13px;color:var(--muted)">Loading Street View…</span>
+                </div>
+                <iframe id="street-view-frame" src="" allowfullscreen></iframe>
+            </div>
+        </div>
+
+        <!-- RIGHT PANEL -->
+        <div class="right-panel">
+
+            <!-- NAVIGATION -->
+            <div class="nav-route-panel">
+                <div class="nav-route-title"><i class="fas fa-route" style="font-size:9px"></i> Navigation</div>
+                <div class="route-inputs">
+                    <div class="route-input-row">
+                        <div class="route-dot from">A</div>
+                        <input type="text" class="route-input" id="fromInput" placeholder="Choose starting point…"
+                            oninput="onRouteInputChange()">
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;padding:2px 0 2px 0">
+                        <div class="route-connector"></div>
+                        <div style="flex:1"></div>
+                        <button class="route-swap-btn" onclick="swapRouteInputs()" title="Swap"><i
+                                class="fas fa-arrow-up-down"></i></button>
+                    </div>
+                    <div class="route-input-row">
+                        <div class="route-dot to">B</div>
+                        <input type="text" class="route-input" id="toInput" placeholder="Choose destination…"
+                            oninput="onRouteInputChange()">
+                    </div>
+                </div>
+
+                <div class="route-action-row">
+                    <button class="btn-get-route" onclick="getRoute()"><i class="fas fa-diamond-turn-right"></i> Get
+                        Directions</button>
+                    <button class="btn-clear-route" onclick="clearRoute()" title="Clear route"><i
+                            class="fas fa-xmark"></i></button>
+                </div>
+
+                <div class="route-info-bar" id="routeInfoBar">
+                    <div class="route-info-row">
+                        <span class="route-info-label">Distance</span>
+                        <span class="route-info-val" id="routeDistance">—</span>
+                    </div>
+                    <hr class="route-info-divider">
+                    <div class="route-info-row">
+                        <span class="route-info-label">Est. Time</span>
+                        <span class="route-info-val" id="routeTime">—</span>
+                    </div>
+                    <hr class="route-info-divider">
+                    <div class="route-hazard-warn" id="routeHazardWarn">
+                        <i class="fas fa-triangle-exclamation"></i>
+                        <span id="routeHazardText">Checking for hazards…</span>
+                    </div>
+                </div>
+
+                <button class="btn-start-nav" id="startNavBtn" onclick="startNavigation()">
+                    <i class="fas fa-location-arrow"></i> Start Navigation
+                </button>
+
+                <div class="nav-active-bar" id="navActiveBar">
+                    <div class="nav-pulse-dot"></div>
+                    <span class="nav-active-text">Navigation Active</span>
+                    <button class="btn-stop-nav" onclick="stopNavigation()">Stop</button>
+                </div>
+            </div>
+            <div class="panel-section">
+                <div class="section-title">📍 Current Location</div>
+                <div class="location-display">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span id="coordDisplay">Click map to pick location</span>
+                </div>
+                <div class="stat-grid-2">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalCount">0</div>
+                        <div class="stat-label">Potholes</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="riskDisplay" style="font-size:18px">Low</div>
+                        <div class="stat-label">Risk Level</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <div class="action-row">
+                    <button class="btn-full primary" onclick="scanRoad()">
+                        <i class="fas fa-radar"></i> Scan Road
+                    </button>
+                    <button class="btn-full" onclick="resetAll()">
+                        <i class="fas fa-rotate-left"></i> Reset
+                    </button>
+                </div>
+            </div>
+
+            <div class="panel-section" style="padding-bottom:4px; border-bottom: none">
+                <div class="section-title">🛣️ Nearby Hazards</div>
+            </div>
+            <div class="hazard-list" id="potholeList">
+                <div class="empty-state">
+                    <i class="fas fa-road"></i>
+                    <p>Click anywhere on the map, then tap <strong>Scan Road</strong> to detect potholes nearby.</p>
+                </div>
+            </div>
+
+            <!-- Footer bar -->
+            <div style="margin-top:auto; padding:10px 16px; border-top:1px solid var(--border); display:flex; gap:8px;">
+                <button class="btn-full" style="font-size:11px" onclick="exportData()">
+                    <i class="fas fa-download"></i> Export Data
+                </button>
+                <button class="btn-full primary" style="font-size:11px" onclick="downloadReport()">
+                    <i class="fas fa-file-pdf"></i> Download Report
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ALERT BANNER -->
+    <div class="alert-bar" id="alertBar">
+        <i class="fas fa-exclamation-triangle"></i>
+        <span id="alertText"></span>
+    </div>
+
+    <!-- DETECTION MODAL -->
+    <div class="detection-panel" id="detectionPanel">
+        <div class="detection-modal">
+            <div class="modal-header">
+                <i class="fas fa-microscope" style="color:var(--accent)"></i>
+                <span class="modal-title">Pothole Detection Results</span>
+                <button class="modal-close" onclick="closeDetectionModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="detection-canvas-wrap">
+                    <canvas id="detectionCanvas"></canvas>
+                    <div class="analyzing-overlay" id="analyzingOverlay">
+                        <div class="scan-lines"></div>
+                        <div class="spinner"></div>
+                        <div class="analyzing-text" id="analyzingText">INITIALIZING SCAN…</div>
+                        <div class="progress-bar-wrap">
+                            <div class="progress-bar-fill" id="progressBar"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="detection-sidebar">
+                    <div class="det-results-header">
+                        <div class="det-results-title">Detection Results</div>
+                        <div class="det-count-row">
+                            <div class="det-count">
+                                <div class="det-count-label">
+                                    <div class="det-dot severe"></div> Severe Potholes:
+                                </div>
+                                <div class="det-count-num severe" id="detSevereCount">—</div>
+                            </div>
+                            <div class="det-count">
+                                <div class="det-count-label">
+                                    <div class="det-dot medium"></div> Mild Potholes:
+                                </div>
+                                <div class="det-count-num medium" id="detMildCount">—</div>
+                            </div>
+                            <hr class="det-divider">
+                            <div class="det-total">
+                                <span>Total Potholes:</span>
+                                <span id="detTotalCount">—</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="det-items-list" id="detItemsList">
+                        <div class="empty-state"><i class="fas fa-spinner fa-spin"></i>
+                            <p>Analyzing image…</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal" onclick="closeDetectionModal()"><i class="fas fa-map-marked-alt"></i> Add to
+                    Map</button>
+                <button class="btn-modal primary" onclick="downloadDetectionReport()"><i class="fas fa-download"></i>
+                    Download Report</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ── POTHOLE DATABASE ──
+        // Kerala entries are zoom-gated (keralaPotholes) — shown only at zoom >= 13
+        // Global entries shown always
+        const keralaPotholes = [
+            // ── THRISSUR DISTRICT ──
+            { lat: 10.5280, lng: 76.2150, severity: 'severe', confidence: 0.92, size: 2.5, name: 'NH47 Junction' },
+            { lat: 10.5295, lng: 76.2180, severity: 'medium', confidence: 0.68, size: 1.2, name: 'Sakthan Stand' },
+            { lat: 10.5265, lng: 76.2130, severity: 'severe', confidence: 0.87, size: 3.1, name: 'Punkunnam Rd Hole' },
+            { lat: 10.5320, lng: 76.2200, severity: 'medium', confidence: 0.75, size: 1.8, name: 'West Fort' },
+            { lat: 10.5350, lng: 76.2250, severity: 'severe', confidence: 0.94, size: 4.2, name: 'MOC Road Hole' },
+            { lat: 10.5380, lng: 76.2280, severity: 'medium', confidence: 0.81, size: 2.1, name: 'Ernakulathappan Rd' },
+            { lat: 10.5410, lng: 76.2310, severity: 'medium', confidence: 0.65, size: 0.9, name: 'Kunnamkulam Road' },
+            { lat: 10.5440, lng: 76.2340, severity: 'severe', confidence: 0.88, size: 3.5, name: 'Irinjalakuda Main' },
+            { lat: 10.5520, lng: 76.2380, severity: 'medium', confidence: 0.79, size: 2.3, name: 'Kunnamkulam Jct' },
+            { lat: 10.5600, lng: 76.2420, severity: 'severe', confidence: 0.91, size: 3.8, name: 'Chavara Road' },
+            { lat: 10.5240, lng: 76.2090, severity: 'medium', confidence: 0.72, size: 1.6, name: 'Ayyanthole Rd' },
+            { lat: 10.5190, lng: 76.2060, severity: 'medium', confidence: 0.63, size: 0.8, name: 'Poothole Jct' },
+            { lat: 10.5310, lng: 76.2170, severity: 'severe', confidence: 0.85, size: 2.9, name: 'Round North' },
+            { lat: 10.5460, lng: 76.2290, severity: 'medium', confidence: 0.67, size: 1.0, name: 'MO Road Patch' },
+            { lat: 10.5550, lng: 76.2360, severity: 'medium', confidence: 0.76, size: 1.7, name: 'Ollur Road' },
+            { lat: 10.5215, lng: 76.2045, severity: 'medium', confidence: 0.70, size: 1.3, name: 'Koratty Road' },
+            { lat: 10.5160, lng: 76.2010, severity: 'severe', confidence: 0.84, size: 2.8, name: 'Chalakudy NH' },
+            { lat: 10.5470, lng: 76.2100, severity: 'medium', confidence: 0.73, size: 1.5, name: 'Vadanapally Rd' },
+            { lat: 10.5580, lng: 76.2200, severity: 'severe', confidence: 0.89, size: 3.2, name: 'Kodakara Jct' },
+            { lat: 10.5630, lng: 76.2300, severity: 'medium', confidence: 0.71, size: 1.4, name: 'Mala Road' },
+            { lat: 10.5150, lng: 76.2150, severity: 'severe', confidence: 0.86, size: 3.0, name: 'Chalakudy Bypass' },
+            { lat: 10.5680, lng: 76.1950, severity: 'medium', confidence: 0.74, size: 1.6, name: 'Guruvayur Rd' },
+            { lat: 10.5920, lng: 76.2450, severity: 'severe', confidence: 0.90, size: 2.7, name: 'Guruvayur Town' },
+            { lat: 10.5960, lng: 76.2500, severity: 'medium', confidence: 0.68, size: 1.1, name: 'Guruvayur Temple Rd' },
+            { lat: 10.5870, lng: 76.2380, severity: 'medium', confidence: 0.72, size: 1.5, name: 'Chavakkad Rd' },
+            { lat: 10.6020, lng: 76.1120, severity: 'severe', confidence: 0.88, size: 3.1, name: 'Ponnani Bypass' },
+            { lat: 10.5750, lng: 76.1950, severity: 'medium', confidence: 0.75, size: 1.8, name: 'Kunnamkulam Town' },
+            { lat: 10.5720, lng: 76.2020, severity: 'medium', confidence: 0.69, size: 1.2, name: 'Kunnamkulam Bypass' },
+            { lat: 10.5830, lng: 76.1880, severity: 'severe', confidence: 0.87, size: 2.9, name: 'Tirur Rd' },
+            { lat: 10.5100, lng: 76.2300, severity: 'medium', confidence: 0.71, size: 1.4, name: 'Pariyaram Road' },
+            { lat: 10.4950, lng: 76.2150, severity: 'severe', confidence: 0.85, size: 3.3, name: 'Pudukkad Junction' },
+            { lat: 10.4890, lng: 76.2080, severity: 'medium', confidence: 0.73, size: 1.5, name: 'Mukundapuram Rd' },
+            { lat: 10.5780, lng: 76.2550, severity: 'medium', confidence: 0.66, size: 1.0, name: 'Cherpu Road' },
+            { lat: 10.5230, lng: 76.2350, severity: 'severe', confidence: 0.91, size: 3.4, name: 'Thrissur Bypass N' },
+            { lat: 10.5340, lng: 76.1900, severity: 'medium', confidence: 0.70, size: 1.3, name: 'Arimpur Road' },
+            { lat: 10.5630, lng: 76.2490, severity: 'medium', confidence: 0.74, size: 1.6, name: 'Wadakkanchery Rd' },
+            { lat: 10.6650, lng: 76.2300, severity: 'severe', confidence: 0.89, size: 2.8, name: 'Wadakkanchery Town' },
+            { lat: 10.6700, lng: 76.2380, severity: 'medium', confidence: 0.72, size: 1.5, name: 'Wadakkanchery NH' },
+            { lat: 10.4800, lng: 76.3300, severity: 'severe', confidence: 0.86, size: 3.0, name: 'Chalakudy River Rd' },
+            { lat: 10.4750, lng: 76.3250, severity: 'medium', confidence: 0.68, size: 1.2, name: 'Athirappilly Rd' },
+            // ── ERNAKULAM / KOCHI DISTRICT ──
+            { lat: 9.9312, lng: 76.2673, severity: 'severe', confidence: 0.90, size: 3.0, name: 'MG Road Kochi' },
+            { lat: 9.9400, lng: 76.2800, severity: 'medium', confidence: 0.74, size: 1.5, name: 'NH66 Kochi' },
+            { lat: 9.9200, lng: 76.2600, severity: 'medium', confidence: 0.62, size: 0.9, name: 'Edapally Jct' },
+            { lat: 9.9600, lng: 76.2900, severity: 'severe', confidence: 0.88, size: 2.8, name: 'Kalamassery Rd' },
+            { lat: 9.9100, lng: 76.2500, severity: 'medium', confidence: 0.71, size: 1.4, name: 'Vyttila Hub' },
+            { lat: 9.9750, lng: 76.2950, severity: 'severe', confidence: 0.92, size: 3.5, name: 'Perumbavoor Rd' },
+            { lat: 9.9850, lng: 76.3050, severity: 'medium', confidence: 0.77, size: 1.8, name: 'Aluva Bypass' },
+            { lat: 10.1100, lng: 76.3500, severity: 'severe', confidence: 0.90, size: 3.2, name: 'Aluva NH' },
+            { lat: 10.0950, lng: 76.3420, severity: 'medium', confidence: 0.75, size: 1.7, name: 'Aluva Town' },
+            { lat: 9.8950, lng: 76.2450, severity: 'severe', confidence: 0.87, size: 3.0, name: 'Maradu Rd' },
+            { lat: 9.8800, lng: 76.2400, severity: 'medium', confidence: 0.69, size: 1.3, name: 'Tripunithura Rd' },
+            { lat: 9.9450, lng: 76.3100, severity: 'medium', confidence: 0.73, size: 1.5, name: 'Kakkanad IT Rd' },
+            { lat: 10.0150, lng: 76.3200, severity: 'severe', confidence: 0.88, size: 2.9, name: 'Angamaly Jct' },
+            { lat: 10.0200, lng: 76.3250, severity: 'medium', confidence: 0.71, size: 1.4, name: 'Angamaly NH' },
+            { lat: 9.9650, lng: 76.2780, severity: 'medium', confidence: 0.74, size: 1.6, name: 'Companypady Rd' },
+            { lat: 9.9200, lng: 76.3150, severity: 'severe', confidence: 0.86, size: 3.1, name: 'Thrikkakara Rd' },
+            { lat: 9.9050, lng: 76.2700, severity: 'medium', confidence: 0.70, size: 1.3, name: 'Palarivattom Jct' },
+            { lat: 9.8700, lng: 76.2300, severity: 'severe', confidence: 0.91, size: 3.4, name: 'Vytilla-Kalamassery' },
+            { lat: 9.9900, lng: 76.3000, severity: 'medium', confidence: 0.72, size: 1.5, name: 'Pulinchodu Rd' },
+            { lat: 9.9550, lng: 76.2600, severity: 'medium', confidence: 0.68, size: 1.2, name: 'Ravipuram Rd' },
+            { lat: 10.0500, lng: 76.3100, severity: 'severe', confidence: 0.89, size: 3.3, name: 'Perumbavoor NH' },
+            { lat: 10.1200, lng: 76.3900, severity: 'medium', confidence: 0.76, size: 1.9, name: 'Muvattupuzha Rd' },
+            { lat: 10.0850, lng: 76.3650, severity: 'medium', confidence: 0.70, size: 1.3, name: 'Kothamangalam Rd' },
+            { lat: 9.8650, lng: 76.2250, severity: 'medium', confidence: 0.73, size: 1.6, name: 'Thripunithura Town' },
+            { lat: 9.8500, lng: 76.2150, severity: 'severe', confidence: 0.85, size: 2.7, name: 'Kumbalangi Rd' },
+            { lat: 9.9300, lng: 76.2550, severity: 'medium', confidence: 0.71, size: 1.4, name: 'Ernakulam South' },
+            { lat: 9.9950, lng: 76.2700, severity: 'medium', confidence: 0.67, size: 1.1, name: 'Kaloor Stadium Rd' },
+            { lat: 10.0300, lng: 76.2900, severity: 'severe', confidence: 0.87, size: 3.0, name: 'Kalamassery CSEZ' },
+            { lat: 9.8350, lng: 76.3100, severity: 'medium', confidence: 0.74, size: 1.7, name: 'Piravom Road' },
+            { lat: 9.8200, lng: 76.3000, severity: 'severe', confidence: 0.88, size: 3.2, name: 'Moovattupuzha Bypass' },
+            // ── KOZHIKODE DISTRICT ──
+            { lat: 11.2588, lng: 75.7804, severity: 'medium', confidence: 0.78, size: 1.9, name: 'Beach Road Kozhikode' },
+            { lat: 11.2450, lng: 75.7700, severity: 'severe', confidence: 0.86, size: 2.7, name: 'SM Street' },
+            { lat: 11.2700, lng: 75.7900, severity: 'medium', confidence: 0.64, size: 1.1, name: 'Mavoor Road' },
+            { lat: 11.2350, lng: 75.7800, severity: 'severe', confidence: 0.89, size: 3.3, name: 'Calicut Medical' },
+            { lat: 11.2600, lng: 75.8100, severity: 'medium', confidence: 0.72, size: 1.5, name: 'Feroke Road' },
+            { lat: 11.2850, lng: 75.8200, severity: 'medium', confidence: 0.68, size: 1.2, name: 'Ramanattukara Jct' },
+            { lat: 11.2200, lng: 75.7600, severity: 'severe', confidence: 0.90, size: 3.1, name: 'Nadakkavu Rd' },
+            { lat: 11.3000, lng: 75.8500, severity: 'medium', confidence: 0.75, size: 1.7, name: 'Quilandy Bypass' },
+            { lat: 11.4300, lng: 75.9100, severity: 'severe', confidence: 0.87, size: 2.9, name: 'Vadakara Town' },
+            { lat: 11.4350, lng: 75.9150, severity: 'medium', confidence: 0.70, size: 1.3, name: 'Vadakara NH' },
+            { lat: 11.2150, lng: 75.8600, severity: 'medium', confidence: 0.73, size: 1.6, name: 'Kunnamangalam Rd' },
+            { lat: 11.1950, lng: 75.8500, severity: 'severe', confidence: 0.88, size: 3.0, name: 'Kondotty Jct' },
+            { lat: 11.1800, lng: 75.9800, severity: 'severe', confidence: 0.85, size: 2.8, name: 'Malappuram NH' },
+            { lat: 11.3200, lng: 75.9200, severity: 'medium', confidence: 0.69, size: 1.2, name: 'Vatakara Road' },
+            { lat: 11.2500, lng: 75.8000, severity: 'medium', confidence: 0.74, size: 1.6, name: 'Calicut Bypass S' },
+            { lat: 11.2750, lng: 75.7950, severity: 'severe', confidence: 0.91, size: 3.5, name: 'KSRTC Depot Rd' },
+            // ── THIRUVANANTHAPURAM DISTRICT ──
+            { lat: 8.5241, lng: 76.9366, severity: 'severe', confidence: 0.93, size: 3.3, name: 'Pattom Jct' },
+            { lat: 8.5100, lng: 76.9200, severity: 'medium', confidence: 0.80, size: 2.0, name: 'Kazhakkoottam Rd' },
+            { lat: 8.5400, lng: 76.9500, severity: 'medium', confidence: 0.66, size: 1.0, name: 'Palayam Road' },
+            { lat: 8.4850, lng: 76.9150, severity: 'severe', confidence: 0.91, size: 3.6, name: 'Technopark Rd' },
+            { lat: 8.5050, lng: 76.9550, severity: 'medium', confidence: 0.74, size: 1.7, name: 'Vellayambalam Rd' },
+            { lat: 8.5300, lng: 76.9400, severity: 'medium', confidence: 0.70, size: 1.3, name: 'Museum Rd TVM' },
+            { lat: 8.5550, lng: 76.9250, severity: 'severe', confidence: 0.87, size: 3.0, name: 'Kesavadasapuram Rd' },
+            { lat: 8.4700, lng: 76.9800, severity: 'medium', confidence: 0.72, size: 1.5, name: 'Kovalam Road' },
+            { lat: 8.5650, lng: 76.8800, severity: 'medium', confidence: 0.68, size: 1.2, name: 'Neyyattinkara Rd' },
+            { lat: 8.6100, lng: 77.0100, severity: 'severe', confidence: 0.89, size: 3.2, name: 'Attingal Bypass' },
+            { lat: 8.6150, lng: 77.0150, severity: 'medium', confidence: 0.73, size: 1.5, name: 'Attingal Town' },
+            { lat: 8.5900, lng: 76.9900, severity: 'medium', confidence: 0.71, size: 1.4, name: 'Chirayinkeezhu Rd' },
+            { lat: 8.5200, lng: 76.9100, severity: 'severe', confidence: 0.88, size: 3.4, name: 'Kowdiar Jct' },
+            { lat: 8.4950, lng: 76.9700, severity: 'medium', confidence: 0.75, size: 1.8, name: 'Thumba Rd' },
+            { lat: 8.6450, lng: 77.0350, severity: 'severe', confidence: 0.86, size: 2.9, name: 'Varkala Bypass' },
+            { lat: 8.6500, lng: 77.0400, severity: 'medium', confidence: 0.69, size: 1.1, name: 'Varkala Town' },
+            { lat: 8.5800, lng: 77.0500, severity: 'medium', confidence: 0.74, size: 1.6, name: 'Parassala Rd' },
+            { lat: 8.5750, lng: 76.9700, severity: 'severe', confidence: 0.90, size: 3.1, name: 'NH-66 TVM North' },
+            // ── KOLLAM DISTRICT ──
+            { lat: 8.8932, lng: 76.6141, severity: 'severe', confidence: 0.91, size: 3.5, name: 'Kollam City NH' },
+            { lat: 8.8850, lng: 76.6050, severity: 'medium', confidence: 0.75, size: 1.8, name: 'KSRTC Stand Rd' },
+            { lat: 8.9100, lng: 76.6300, severity: 'medium', confidence: 0.68, size: 1.2, name: 'Thangassery Rd' },
+            { lat: 8.9400, lng: 76.6600, severity: 'severe', confidence: 0.89, size: 3.2, name: 'Karunagappally NH' },
+            { lat: 9.0100, lng: 76.7000, severity: 'medium', confidence: 0.72, size: 1.5, name: 'Kottarakkara Bypass' },
+            { lat: 9.0150, lng: 76.7050, severity: 'medium', confidence: 0.70, size: 1.3, name: 'Kottarakkara Town' },
+            { lat: 8.9600, lng: 76.6800, severity: 'severe', confidence: 0.86, size: 2.8, name: 'Punalur Rd' },
+            { lat: 9.0900, lng: 76.9200, severity: 'severe', confidence: 0.88, size: 3.0, name: 'Punalur Town NH' },
+            { lat: 8.8650, lng: 76.5900, severity: 'medium', confidence: 0.73, size: 1.6, name: 'Kadappakada Rd' },
+            { lat: 9.0550, lng: 76.7450, severity: 'medium', confidence: 0.67, size: 1.1, name: 'Chathannur Rd' },
+            { lat: 8.8500, lng: 76.5750, severity: 'severe', confidence: 0.87, size: 3.3, name: 'Eravipuram Rd' },
+            // ── PATHANAMTHITTA DISTRICT ──
+            { lat: 9.2648, lng: 76.7870, severity: 'severe', confidence: 0.88, size: 3.2, name: 'Pathanamthitta Town' },
+            { lat: 9.2700, lng: 76.7950, severity: 'medium', confidence: 0.72, size: 1.5, name: 'Adoor Road' },
+            { lat: 9.2200, lng: 76.7400, severity: 'medium', confidence: 0.68, size: 1.2, name: 'Thiruvalla Bypass' },
+            { lat: 9.3800, lng: 76.5700, severity: 'severe', confidence: 0.91, size: 3.5, name: 'Ranni NH' },
+            { lat: 9.3850, lng: 76.5750, severity: 'medium', confidence: 0.74, size: 1.7, name: 'Ranni Town Rd' },
+            { lat: 9.1500, lng: 76.8000, severity: 'medium', confidence: 0.70, size: 1.3, name: 'Konni Road' },
+            { lat: 9.1550, lng: 76.8050, severity: 'severe', confidence: 0.85, size: 2.9, name: 'Konni Forest Rd' },
+            { lat: 9.2350, lng: 76.9150, severity: 'medium', confidence: 0.73, size: 1.6, name: 'Kozhencherry Rd' },
+            { lat: 9.3200, lng: 76.6800, severity: 'medium', confidence: 0.69, size: 1.2, name: 'Mallappally Rd' },
+            // ── ALAPPUZHA DISTRICT ──
+            { lat: 9.4981, lng: 76.3388, severity: 'severe', confidence: 0.90, size: 3.3, name: 'Alappuzha Beach Rd' },
+            { lat: 9.5050, lng: 76.3450, severity: 'medium', confidence: 0.75, size: 1.8, name: 'Alappuzha NH' },
+            { lat: 9.5100, lng: 76.3500, severity: 'medium', confidence: 0.68, size: 1.2, name: 'Alappuzha Town Jct' },
+            { lat: 9.5600, lng: 76.3750, severity: 'severe', confidence: 0.88, size: 3.0, name: 'Cherthala Bypass' },
+            { lat: 9.5650, lng: 76.3800, severity: 'medium', confidence: 0.72, size: 1.5, name: 'Cherthala Town' },
+            { lat: 9.4600, lng: 76.3200, severity: 'medium', confidence: 0.70, size: 1.3, name: 'Punnapra Rd' },
+            { lat: 9.4200, lng: 76.3050, severity: 'severe', confidence: 0.86, size: 2.8, name: 'Haripad Jct' },
+            { lat: 9.4250, lng: 76.3100, severity: 'medium', confidence: 0.74, size: 1.6, name: 'Haripad NH' },
+            { lat: 9.4800, lng: 76.3300, severity: 'medium', confidence: 0.69, size: 1.1, name: 'Mannar Road' },
+            { lat: 9.6050, lng: 76.4150, severity: 'severe', confidence: 0.89, size: 3.2, name: 'Aroor Jct' },
+            { lat: 9.6100, lng: 76.4200, severity: 'medium', confidence: 0.73, size: 1.5, name: 'Aroor-Edappally Rd' },
+            { lat: 9.3950, lng: 76.2900, severity: 'medium', confidence: 0.71, size: 1.4, name: 'Kayamkulam Rd' },
+            { lat: 9.3900, lng: 76.2850, severity: 'severe', confidence: 0.87, size: 3.1, name: 'Kayamkulam Bypass' },
+            // ── KOTTAYAM DISTRICT ──
+            { lat: 9.5916, lng: 76.5222, severity: 'severe', confidence: 0.91, size: 3.4, name: 'Kottayam Town NH' },
+            { lat: 9.5970, lng: 76.5280, severity: 'medium', confidence: 0.76, size: 1.8, name: 'Baker Jct' },
+            { lat: 9.6050, lng: 76.5150, severity: 'medium', confidence: 0.69, size: 1.2, name: 'Nagampadam Rd' },
+            { lat: 9.5700, lng: 76.5000, severity: 'severe', confidence: 0.88, size: 3.0, name: 'Changanacherry NH' },
+            { lat: 9.5750, lng: 76.5050, severity: 'medium', confidence: 0.73, size: 1.5, name: 'Changanacherry Town' },
+            { lat: 9.7050, lng: 76.5450, severity: 'medium', confidence: 0.70, size: 1.3, name: 'Pala Road' },
+            { lat: 9.7100, lng: 76.5500, severity: 'severe', confidence: 0.86, size: 2.9, name: 'Pala Bypass' },
+            { lat: 9.6200, lng: 76.6200, severity: 'medium', confidence: 0.74, size: 1.6, name: 'Erattupetta Rd' },
+            { lat: 9.5400, lng: 76.5500, severity: 'medium', confidence: 0.68, size: 1.1, name: 'Vaikom Road' },
+            { lat: 9.5450, lng: 76.5550, severity: 'severe', confidence: 0.85, size: 2.8, name: 'Vaikom Bypass' },
+            { lat: 9.6550, lng: 76.5300, severity: 'medium', confidence: 0.72, size: 1.4, name: 'Kanjirappally Rd' },
+            { lat: 9.5850, lng: 76.4950, severity: 'severe', confidence: 0.89, size: 3.3, name: 'Kumarakom Rd' },
+            // ── IDUKKI DISTRICT ──
+            { lat: 9.9195, lng: 77.1000, severity: 'severe', confidence: 0.90, size: 3.5, name: 'Thodupuzha NH' },
+            { lat: 9.9250, lng: 77.1050, severity: 'medium', confidence: 0.74, size: 1.7, name: 'Thodupuzha Town' },
+            { lat: 10.0100, lng: 77.0700, severity: 'medium', confidence: 0.70, size: 1.3, name: 'Muvattupuzha-Munnar Rd' },
+            { lat: 10.0800, lng: 77.0600, severity: 'severe', confidence: 0.88, size: 3.1, name: 'Munnar NH' },
+            { lat: 10.0850, lng: 77.0650, severity: 'medium', confidence: 0.72, size: 1.5, name: 'Munnar Town' },
+            { lat: 9.8500, lng: 77.0800, severity: 'medium', confidence: 0.68, size: 1.2, name: 'Kattappana Rd' },
+            { lat: 9.8550, lng: 77.0850, severity: 'severe', confidence: 0.86, size: 2.9, name: 'Kattappana Bypass' },
+            { lat: 9.7700, lng: 76.9900, severity: 'medium', confidence: 0.73, size: 1.6, name: 'Nedumkandam Rd' },
+            { lat: 9.9850, lng: 76.8500, severity: 'severe', confidence: 0.89, size: 3.2, name: 'Kumily Bypass' },
+            { lat: 9.9900, lng: 76.8550, severity: 'medium', confidence: 0.71, size: 1.4, name: 'Kumily Town' },
+            // ── PALAKKAD DISTRICT ──
+            { lat: 10.7867, lng: 76.6548, severity: 'severe', confidence: 0.91, size: 3.5, name: 'Palakkad Town NH' },
+            { lat: 10.7920, lng: 76.6600, severity: 'medium', confidence: 0.75, size: 1.8, name: 'Palakkad Fort Rd' },
+            { lat: 10.7750, lng: 76.6400, severity: 'medium', confidence: 0.68, size: 1.2, name: 'Olavakkode Rd' },
+            { lat: 10.8300, lng: 76.6800, severity: 'severe', confidence: 0.89, size: 3.1, name: 'Nemmara Road' },
+            { lat: 10.8350, lng: 76.6850, severity: 'medium', confidence: 0.72, size: 1.5, name: 'Nemmara Town' },
+            { lat: 10.7500, lng: 76.6200, severity: 'medium', confidence: 0.70, size: 1.3, name: 'Chittur Road' },
+            { lat: 10.6900, lng: 76.7200, severity: 'severe', confidence: 0.87, size: 2.9, name: 'Thrissur-Palakkad NH' },
+            { lat: 10.9100, lng: 76.8100, severity: 'medium', confidence: 0.73, size: 1.6, name: 'Mannarkkad Rd' },
+            { lat: 10.9150, lng: 76.8150, severity: 'severe', confidence: 0.88, size: 3.0, name: 'Mannarkkad Bypass' },
+            { lat: 10.7200, lng: 76.4800, severity: 'medium', confidence: 0.71, size: 1.4, name: 'Palakkad-Coimbatore NH' },
+            { lat: 10.7250, lng: 76.4900, severity: 'severe', confidence: 0.86, size: 3.2, name: 'Kanjikode Rd' },
+            { lat: 10.8650, lng: 76.7850, severity: 'medium', confidence: 0.69, size: 1.2, name: 'Ottapalam Rd' },
+            { lat: 10.8700, lng: 76.7900, severity: 'severe', confidence: 0.90, size: 3.4, name: 'Ottapalam Bypass' },
+            { lat: 10.6600, lng: 76.6000, severity: 'medium', confidence: 0.74, size: 1.7, name: 'Shoranur NH' },
+            { lat: 10.7650, lng: 76.2700, severity: 'medium', confidence: 0.72, size: 1.5, name: 'Pattambi Road' },
+            // ── MALAPPURAM DISTRICT ──
+            { lat: 11.0730, lng: 76.0740, severity: 'severe', confidence: 0.91, size: 3.5, name: 'Malappuram Town NH' },
+            { lat: 11.0780, lng: 76.0790, severity: 'medium', confidence: 0.75, size: 1.8, name: 'Malappuram Town Rd' },
+            { lat: 11.0200, lng: 75.9800, severity: 'medium', confidence: 0.68, size: 1.2, name: 'Tirur Bypass' },
+            { lat: 11.0250, lng: 75.9850, severity: 'severe', confidence: 0.88, size: 3.1, name: 'Tirur Town' },
+            { lat: 11.1150, lng: 75.8500, severity: 'medium', confidence: 0.72, size: 1.5, name: 'Tanur Road' },
+            { lat: 11.1200, lng: 75.8550, severity: 'medium', confidence: 0.70, size: 1.3, name: 'Tanur Town' },
+            { lat: 11.0850, lng: 76.1100, severity: 'severe', confidence: 0.87, size: 2.9, name: 'Manjeri NH' },
+            { lat: 11.0900, lng: 76.1150, severity: 'medium', confidence: 0.73, size: 1.6, name: 'Manjeri Town' },
+            { lat: 10.9800, lng: 76.0400, severity: 'severe', confidence: 0.89, size: 3.2, name: 'Perinthalmanna Rd' },
+            { lat: 10.9850, lng: 76.0450, severity: 'medium', confidence: 0.71, size: 1.4, name: 'Perinthalmanna Bypass' },
+            { lat: 11.1550, lng: 75.9200, severity: 'medium', confidence: 0.69, size: 1.2, name: 'Parappanangadi Rd' },
+            { lat: 11.1600, lng: 75.9250, severity: 'severe', confidence: 0.86, size: 2.8, name: 'Tirurangadi NH' },
+            { lat: 11.0500, lng: 75.9300, severity: 'medium', confidence: 0.74, size: 1.7, name: 'Kondotty Bypass' },
+            { lat: 10.9400, lng: 76.1800, severity: 'severe', confidence: 0.88, size: 3.0, name: 'Nilambur NH' },
+            { lat: 10.9450, lng: 76.1850, severity: 'medium', confidence: 0.72, size: 1.5, name: 'Nilambur Town' },
+            // ── KANNUR DISTRICT ──
+            { lat: 11.8745, lng: 75.3704, severity: 'severe', confidence: 0.91, size: 3.5, name: 'Kannur Town NH' },
+            { lat: 11.8800, lng: 75.3750, severity: 'medium', confidence: 0.75, size: 1.8, name: 'Kannur Fort Rd' },
+            { lat: 11.9200, lng: 75.4100, severity: 'medium', confidence: 0.68, size: 1.2, name: 'Thalassery Rd' },
+            { lat: 11.9250, lng: 75.4150, severity: 'severe', confidence: 0.89, size: 3.1, name: 'Thalassery Bypass' },
+            { lat: 11.8400, lng: 75.3400, severity: 'medium', confidence: 0.72, size: 1.5, name: 'Parassinikadavu Rd' },
+            { lat: 11.8100, lng: 75.4600, severity: 'severe', confidence: 0.87, size: 2.9, name: 'Iritty Road' },
+            { lat: 11.8150, lng: 75.4650, severity: 'medium', confidence: 0.73, size: 1.6, name: 'Iritty Town' },
+            { lat: 11.9550, lng: 75.4500, severity: 'medium', confidence: 0.70, size: 1.3, name: 'Vadakara Road N' },
+            { lat: 11.7900, lng: 75.3300, severity: 'severe', confidence: 0.88, size: 3.2, name: 'Kuthuparamba Rd' },
+            { lat: 11.7950, lng: 75.3350, severity: 'medium', confidence: 0.71, size: 1.4, name: 'Kuthuparamba Town' },
+            { lat: 12.0000, lng: 75.4800, severity: 'medium', confidence: 0.69, size: 1.2, name: 'Payyanur NH' },
+            { lat: 12.0050, lng: 75.4850, severity: 'severe', confidence: 0.86, size: 2.8, name: 'Payyanur Bypass' },
+            // ── KASARGOD DISTRICT ──
+            { lat: 12.4996, lng: 74.9869, severity: 'severe', confidence: 0.90, size: 3.4, name: 'Kasaragod Town NH' },
+            { lat: 12.5050, lng: 74.9920, severity: 'medium', confidence: 0.74, size: 1.7, name: 'Kasaragod Town Rd' },
+            { lat: 12.4100, lng: 74.9300, severity: 'medium', confidence: 0.68, size: 1.2, name: 'Kanhangad Rd' },
+            { lat: 12.4150, lng: 74.9350, severity: 'severe', confidence: 0.88, size: 3.1, name: 'Kanhangad Bypass' },
+            { lat: 12.3400, lng: 74.9000, severity: 'medium', confidence: 0.72, size: 1.5, name: 'Nileshwar Road' },
+            { lat: 12.3450, lng: 74.9050, severity: 'medium', confidence: 0.70, size: 1.3, name: 'Nileshwar NH' },
+            { lat: 12.5600, lng: 75.0300, severity: 'severe', confidence: 0.87, size: 2.9, name: 'Bekal Road' },
+            { lat: 12.2800, lng: 74.8600, severity: 'medium', confidence: 0.73, size: 1.6, name: 'Cheruvathur Rd' },
+            // ── WAYANAD DISTRICT ──
+            { lat: 11.6854, lng: 76.1320, severity: 'severe', confidence: 0.90, size: 3.3, name: 'Kalpetta Town NH' },
+            { lat: 11.6900, lng: 76.1370, severity: 'medium', confidence: 0.74, size: 1.7, name: 'Kalpetta Town Rd' },
+            { lat: 11.7600, lng: 76.0700, severity: 'medium', confidence: 0.68, size: 1.2, name: 'Mananthavady Rd' },
+            { lat: 11.7650, lng: 76.0750, severity: 'severe', confidence: 0.88, size: 3.0, name: 'Mananthavady NH' },
+            { lat: 11.6200, lng: 76.0900, severity: 'medium', confidence: 0.72, size: 1.5, name: 'Sultan Bathery Rd' },
+            { lat: 11.6250, lng: 76.0950, severity: 'severe', confidence: 0.87, size: 2.8, name: 'Sultan Bathery Bypass' },
+            { lat: 11.7200, lng: 76.2000, severity: 'medium', confidence: 0.70, size: 1.3, name: 'Ambalavayal Rd' },
+            { lat: 11.5900, lng: 76.2100, severity: 'severe', confidence: 0.89, size: 3.2, name: 'Vythiri Rd' },
+            { lat: 11.5950, lng: 76.2150, severity: 'medium', confidence: 0.71, size: 1.4, name: 'Vythiri Town' },
+            // ── NH-66 SPINE (coast) ──
+            { lat: 8.7200, lng: 76.7200, severity: 'severe', confidence: 0.90, size: 3.4, name: 'NH66 Karunagappally' },
+            { lat: 8.8200, lng: 76.6700, severity: 'medium', confidence: 0.74, size: 1.7, name: 'NH66 Chavara' },
+            { lat: 9.0700, lng: 76.5300, severity: 'severe', confidence: 0.88, size: 3.1, name: 'NH66 Kayamkulam' },
+            { lat: 9.1800, lng: 76.5800, severity: 'medium', confidence: 0.72, size: 1.5, name: 'NH66 Mavelikara' },
+            { lat: 9.3500, lng: 76.5200, severity: 'severe', confidence: 0.91, size: 3.5, name: 'NH66 Chengannur' },
+            { lat: 9.5900, lng: 76.5300, severity: 'medium', confidence: 0.75, size: 1.8, name: 'NH66 Ettumanoor' },
+            { lat: 9.7800, lng: 76.3800, severity: 'severe', confidence: 0.89, size: 3.2, name: 'NH66 Vaikom' },
+            { lat: 10.0500, lng: 76.2100, severity: 'medium', confidence: 0.70, size: 1.4, name: 'NH66 Kalady' },
+            { lat: 10.2200, lng: 76.1900, severity: 'severe', confidence: 0.87, size: 3.0, name: 'NH66 Chalissery' },
+            { lat: 10.4800, lng: 76.1300, severity: 'medium', confidence: 0.73, size: 1.6, name: 'NH66 Ponnani' },
+            { lat: 10.7700, lng: 75.9200, severity: 'severe', confidence: 0.90, size: 3.3, name: 'NH66 Kuttippuram' },
+            { lat: 11.0400, lng: 75.8000, severity: 'medium', confidence: 0.71, size: 1.4, name: 'NH66 Feroke' },
+            { lat: 11.4200, lng: 75.7500, severity: 'severe', confidence: 0.88, size: 3.1, name: 'NH66 Koyilandy' },
+            { lat: 11.6800, lng: 75.5500, severity: 'medium', confidence: 0.74, size: 1.7, name: 'NH66 Vadakara' },
+            { lat: 11.9500, lng: 75.3600, severity: 'severe', confidence: 0.89, size: 3.4, name: 'NH66 Kannur S' },
+            { lat: 12.1500, lng: 75.2100, severity: 'medium', confidence: 0.72, size: 1.5, name: 'NH66 Payyanur' },
+            { lat: 12.3800, lng: 75.0200, severity: 'severe', confidence: 0.87, size: 3.0, name: 'NH66 Kanhangad N' },
+            // ── NH-544 (Kochi–Coimbatore) ──
+            { lat: 9.9900, lng: 76.3550, severity: 'severe', confidence: 0.89, size: 3.3, name: 'NH544 Aluva' },
+            { lat: 10.1500, lng: 76.4200, severity: 'medium', confidence: 0.73, size: 1.6, name: 'NH544 Perumbavoor' },
+            { lat: 10.3200, lng: 76.5100, severity: 'severe', confidence: 0.91, size: 3.5, name: 'NH544 Kothamangalam' },
+            { lat: 10.5000, lng: 76.5800, severity: 'medium', confidence: 0.70, size: 1.4, name: 'NH544 Kalady E' },
+            { lat: 10.6500, lng: 76.6200, severity: 'severe', confidence: 0.88, size: 3.1, name: 'NH544 Palakkad Gate' },
+            // ── MC Road (TVM-Changanacherry-Kottayam) ──
+            { lat: 8.6800, lng: 76.8800, severity: 'severe', confidence: 0.89, size: 3.2, name: 'MC Road Nedumangad' },
+            { lat: 8.8000, lng: 76.8200, severity: 'medium', confidence: 0.74, size: 1.7, name: 'MC Road Attingal' },
+            { lat: 8.9200, lng: 76.7500, severity: 'severe', confidence: 0.87, size: 3.0, name: 'MC Road Varkala' },
+            { lat: 9.1800, lng: 76.6700, severity: 'medium', confidence: 0.71, size: 1.4, name: 'MC Road Karunagappally' },
+            { lat: 9.3200, lng: 76.6000, severity: 'severe', confidence: 0.90, size: 3.4, name: 'MC Road Adoor' },
+            { lat: 9.4500, lng: 76.5600, severity: 'medium', confidence: 0.73, size: 1.6, name: 'MC Road Konni' },
+            { lat: 9.5200, lng: 76.5300, severity: 'medium', confidence: 0.69, size: 1.2, name: 'MC Road Tiruvalla' },
+            // ── Additional scatter across Kerala ──
+            { lat: 11.3500, lng: 76.2100, severity: 'severe', confidence: 0.88, size: 3.2, name: 'Silent Valley Rd' },
+            { lat: 11.4800, lng: 76.0800, severity: 'medium', confidence: 0.72, size: 1.5, name: 'Mukkali Road' },
+            { lat: 11.5600, lng: 76.0200, severity: 'medium', confidence: 0.70, size: 1.3, name: 'Agali Road' },
+            { lat: 10.3500, lng: 76.7800, severity: 'severe', confidence: 0.87, size: 2.9, name: 'Nelliyampathy Rd' },
+            { lat: 10.2800, lng: 77.0500, severity: 'medium', confidence: 0.73, size: 1.6, name: 'Munnar Foothills' },
+            { lat: 9.6800, lng: 77.1500, severity: 'severe', confidence: 0.89, size: 3.1, name: 'Adimali Road' },
+            { lat: 9.5500, lng: 76.9100, severity: 'medium', confidence: 0.71, size: 1.4, name: 'Peerumedu Rd' },
+            { lat: 9.0200, lng: 77.0800, severity: 'medium', confidence: 0.68, size: 1.2, name: 'Kambam-Kerala Border' },
+            { lat: 9.2100, lng: 77.1200, severity: 'severe', confidence: 0.86, size: 2.8, name: 'Bodinayakanur Rd' },
+            { lat: 10.3800, lng: 76.4200, severity: 'medium', confidence: 0.74, size: 1.7, name: 'Iritty-Mannarkkad Rd' },
+            { lat: 11.6600, lng: 75.8900, severity: 'medium', confidence: 0.72, size: 1.5, name: 'Kalpetta-Mananthavady' },
+            { lat: 11.8500, lng: 75.9400, severity: 'severe', confidence: 0.88, size: 3.0, name: 'Mananthavady Forest Rd' },
+            { lat: 10.1800, lng: 76.2600, severity: 'medium', confidence: 0.70, size: 1.3, name: 'Chalakudy River Rd' },
+            { lat: 10.2500, lng: 76.3500, severity: 'severe', confidence: 0.86, size: 2.9, name: 'Thattekkad Rd' },
+            { lat: 9.7500, lng: 76.6500, severity: 'medium', confidence: 0.73, size: 1.6, name: 'Pamba River Rd' },
+            { lat: 9.6200, lng: 77.0100, severity: 'severe', confidence: 0.89, size: 3.3, name: 'Sabarimala Access Rd' },
+            { lat: 9.6250, lng: 77.0150, severity: 'medium', confidence: 0.71, size: 1.4, name: 'Pampa Rd' },
+            { lat: 9.3600, lng: 76.9200, severity: 'medium', confidence: 0.69, size: 1.2, name: 'Senapathy Rd' },
+            { lat: 10.0200, lng: 76.9800, severity: 'severe', confidence: 0.87, size: 3.0, name: 'Marayoor Road' },
+            { lat: 10.3200, lng: 76.2100, severity: 'medium', confidence: 0.74, size: 1.7, name: 'Irinjalakuda-Thrissur' },
+            { lat: 9.8800, lng: 76.5500, severity: 'severe', confidence: 0.88, size: 3.2, name: 'Ernakulam-Kottayam NH' },
+            { lat: 10.4100, lng: 76.1600, severity: 'medium', confidence: 0.72, size: 1.5, name: 'Kodungallur Rd' },
+            { lat: 10.4150, lng: 76.1650, severity: 'medium', confidence: 0.70, size: 1.3, name: 'Kodungallur Town' },
+            { lat: 9.7200, lng: 76.2200, severity: 'severe', confidence: 0.87, size: 2.9, name: 'Alleppey-Changanacherry' },
+            { lat: 9.8400, lng: 76.3600, severity: 'medium', confidence: 0.73, size: 1.6, name: 'Vaikom-Changanacherry' },
+            { lat: 10.7000, lng: 76.2800, severity: 'severe', confidence: 0.90, size: 3.4, name: 'Tirur-Kuttippuram NH' },
+            { lat: 10.7050, lng: 76.2850, severity: 'medium', confidence: 0.71, size: 1.4, name: 'Tirur-Ponnani Rd' },
+        ];
+
+        const globalPotholes = [
+            // Mumbai
+            { lat: 19.0760, lng: 72.8777, severity: 'severe', confidence: 0.95, size: 4.5, name: 'Western Express Hwy' },
+            { lat: 19.0550, lng: 72.8700, severity: 'severe', confidence: 0.91, size: 3.8, name: 'Andheri Flyover' },
+            { lat: 19.0900, lng: 72.8900, severity: 'medium', confidence: 0.77, size: 2.2, name: 'Bandra-Kurla Link' },
+            { lat: 19.0300, lng: 72.8550, severity: 'severe', confidence: 0.89, size: 3.5, name: 'Dharavi Road' },
+            { lat: 19.1100, lng: 72.9100, severity: 'medium', confidence: 0.65, size: 1.0, name: 'Powai Road' },
+            { lat: 19.0700, lng: 72.8300, severity: 'medium', confidence: 0.73, size: 1.8, name: 'Mahim Causeway' },
+            { lat: 19.0200, lng: 72.8400, severity: 'severe', confidence: 0.87, size: 3.1, name: 'Sion Hill Road' },
+            // Delhi
+            { lat: 28.6139, lng: 77.2090, severity: 'severe', confidence: 0.92, size: 4.0, name: 'Connaught Place' },
+            { lat: 28.6500, lng: 77.2300, severity: 'medium', confidence: 0.79, size: 2.1, name: 'Laxmi Nagar' },
+            { lat: 28.5800, lng: 77.1800, severity: 'severe', confidence: 0.88, size: 3.4, name: 'South Delhi NH8' },
+            { lat: 28.7000, lng: 77.2500, severity: 'medium', confidence: 0.63, size: 0.9, name: 'Model Town Rd' },
+            { lat: 28.6300, lng: 77.1600, severity: 'medium', confidence: 0.75, size: 1.7, name: 'Rohini Sector' },
+            { lat: 28.6700, lng: 77.2800, severity: 'severe', confidence: 0.90, size: 3.6, name: 'Shahdara Bridge' },
+            // Bangalore
+            { lat: 12.9716, lng: 77.5946, severity: 'severe', confidence: 0.91, size: 3.2, name: 'Silk Board Jct' },
+            { lat: 12.9900, lng: 77.6100, severity: 'medium', confidence: 0.76, size: 1.9, name: 'Marathahalli' },
+            { lat: 12.9500, lng: 77.5800, severity: 'severe', confidence: 0.87, size: 2.9, name: 'BTM Layout Rd' },
+            { lat: 13.0100, lng: 77.5700, severity: 'medium', confidence: 0.64, size: 1.1, name: 'Yeshwantpur Rd' },
+            { lat: 12.9300, lng: 77.6300, severity: 'medium', confidence: 0.72, size: 1.6, name: 'Electronic City' },
+            // Chennai
+            { lat: 13.0827, lng: 80.2707, severity: 'medium', confidence: 0.78, size: 1.8, name: 'Anna Salai' },
+            { lat: 13.0600, lng: 80.2500, severity: 'severe', confidence: 0.86, size: 3.0, name: 'OMR Road Hole' },
+            { lat: 13.1000, lng: 80.2900, severity: 'medium', confidence: 0.65, size: 1.0, name: 'Adyar Bridge' },
+            { lat: 13.0400, lng: 80.2300, severity: 'severe', confidence: 0.89, size: 3.3, name: 'Guindy Flyover' },
+            // Kolkata
+            { lat: 22.5726, lng: 88.3639, severity: 'severe', confidence: 0.93, size: 4.1, name: 'EM Bypass' },
+            { lat: 22.5500, lng: 88.3400, severity: 'medium', confidence: 0.80, size: 2.3, name: 'VIP Road Pothole' },
+            { lat: 22.5300, lng: 88.3200, severity: 'severe', confidence: 0.88, size: 3.5, name: 'Garden Reach Rd' },
+            // Hyderabad
+            { lat: 17.3850, lng: 78.4867, severity: 'severe', confidence: 0.90, size: 3.7, name: 'Outer Ring Road' },
+            { lat: 17.4000, lng: 78.5000, severity: 'medium', confidence: 0.74, size: 1.7, name: 'Gachibowli' },
+            // Pakistan
+            { lat: 24.8607, lng: 67.0011, severity: 'severe', confidence: 0.91, size: 3.9, name: 'Karachi Shahrah' },
+            { lat: 31.5204, lng: 74.3587, severity: 'medium', confidence: 0.75, size: 2.0, name: 'Lahore Ring Road' },
+            // Bangladesh
+            { lat: 23.8103, lng: 90.4125, severity: 'severe', confidence: 0.94, size: 4.3, name: 'Dhaka Mirpur Rd' },
+            { lat: 23.7800, lng: 90.3900, severity: 'medium', confidence: 0.78, size: 2.1, name: 'Dhanmondi Road' },
+            // Sri Lanka
+            { lat: 6.9271, lng: 79.8612, severity: 'medium', confidence: 0.72, size: 1.6, name: 'Colombo Galle Rd' },
+            // Africa
+            { lat: -1.2921, lng: 36.8219, severity: 'severe', confidence: 0.89, size: 3.6, name: 'Nairobi Thika Rd' },
+            { lat: 6.5244, lng: 3.3792, severity: 'severe', confidence: 0.92, size: 4.0, name: 'Lagos Apapa Rd' },
+            { lat: 6.5000, lng: 3.3500, severity: 'medium', confidence: 0.76, size: 2.0, name: 'Lagos Island' },
+            { lat: 5.5600, lng: -0.2057, severity: 'medium', confidence: 0.73, size: 1.7, name: 'Accra Ring Road' },
+            { lat: -26.2041, lng: 28.0473, severity: 'medium', confidence: 0.70, size: 1.5, name: 'Johannesburg N1' },
+            { lat: -4.3217, lng: 15.3224, severity: 'severe', confidence: 0.88, size: 3.4, name: 'Kinshasa Blvd' },
+            { lat: 9.0222, lng: 38.7464, severity: 'medium', confidence: 0.77, size: 1.9, name: 'Addis Ring Road' },
+            { lat: 15.5527, lng: 32.5324, severity: 'severe', confidence: 0.86, size: 3.0, name: 'Khartoum N-1' },
+            // Middle East
+            { lat: 30.0444, lng: 31.2357, severity: 'medium', confidence: 0.73, size: 1.7, name: 'Cairo Ring Road' },
+            { lat: 33.3152, lng: 44.3661, severity: 'severe', confidence: 0.90, size: 3.7, name: 'Baghdad Al-Karkh' },
+            { lat: 36.2021, lng: 37.1343, severity: 'severe', confidence: 0.91, size: 3.5, name: 'Aleppo Industrial' },
+            { lat: 33.5138, lng: 36.2765, severity: 'medium', confidence: 0.74, size: 1.8, name: 'Damascus Mezzeh' },
+            // Europe
+            { lat: 51.5074, lng: -0.1278, severity: 'medium', confidence: 0.74, size: 1.5, name: 'London Bridge Rd' },
+            { lat: 51.5200, lng: -0.0900, severity: 'severe', confidence: 0.82, size: 2.6, name: 'Hackney E9' },
+            { lat: 48.8566, lng: 2.3522, severity: 'medium', confidence: 0.61, size: 0.8, name: 'Paris Rue Rivoli' },
+            { lat: 52.5200, lng: 13.4050, severity: 'medium', confidence: 0.70, size: 1.5, name: 'Berlin A100' },
+            { lat: 41.9028, lng: 12.4964, severity: 'medium', confidence: 0.71, size: 1.6, name: 'Rome Via Appia' },
+            { lat: 41.8800, lng: 12.4700, severity: 'severe', confidence: 0.83, size: 2.7, name: 'Rome Raccordo' },
+            { lat: 40.4168, lng: -3.7038, severity: 'medium', confidence: 0.69, size: 1.5, name: 'Madrid M-30' },
+            { lat: 52.2297, lng: 21.0122, severity: 'severe', confidence: 0.84, size: 2.9, name: 'Warsaw S2 Pothole' },
+            { lat: 44.4268, lng: 26.1025, severity: 'severe', confidence: 0.87, size: 3.2, name: 'Bucharest DN1' },
+            { lat: 55.7558, lng: 37.6173, severity: 'severe', confidence: 0.90, size: 3.8, name: 'Moscow MKAD' },
+            { lat: 55.7700, lng: 37.6400, severity: 'medium', confidence: 0.76, size: 2.1, name: 'Moscow TTK' },
+            { lat: 50.4501, lng: 30.5234, severity: 'severe', confidence: 0.92, size: 4.0, name: 'Kyiv Boryspil Rd' },
+            // Americas
+            { lat: 40.7128, lng: -74.0060, severity: 'severe', confidence: 0.89, size: 3.2, name: 'Manhattan 5th Ave' },
+            { lat: 40.7300, lng: -73.9900, severity: 'medium', confidence: 0.75, size: 1.9, name: 'Brooklyn FDR' },
+            { lat: 41.8781, lng: -87.6298, severity: 'severe', confidence: 0.91, size: 3.7, name: 'Chicago I-90 W' },
+            { lat: 34.0522, lng: -118.2437, severity: 'medium', confidence: 0.72, size: 1.7, name: 'LA 405 Freeway' },
+            { lat: 29.7604, lng: -95.3698, severity: 'severe', confidence: 0.88, size: 3.1, name: 'Houston I-10' },
+            { lat: 42.3601, lng: -71.0589, severity: 'severe', confidence: 0.90, size: 3.5, name: 'Boston Mass Ave' },
+            { lat: 43.6532, lng: -79.3832, severity: 'medium', confidence: 0.75, size: 1.8, name: 'Toronto Gardiner' },
+            { lat: 45.5017, lng: -73.5673, severity: 'severe', confidence: 0.87, size: 3.2, name: 'Montreal Autoroute' },
+            { lat: -23.5505, lng: -46.6333, severity: 'severe', confidence: 0.93, size: 4.2, name: 'São Paulo Marginal' },
+            { lat: -22.9068, lng: -43.1729, severity: 'severe', confidence: 0.89, size: 3.6, name: 'Rio de Janeiro BR-040' },
+            { lat: -34.6037, lng: -58.3816, severity: 'medium', confidence: 0.76, size: 2.0, name: 'Buenos Aires Ruta 2' },
+            { lat: 19.4326, lng: -99.1332, severity: 'severe', confidence: 0.92, size: 4.0, name: 'Mexico City Periferico' },
+            { lat: 10.4806, lng: -66.9036, severity: 'severe', confidence: 0.91, size: 3.8, name: 'Caracas Autopista' },
+            // East Asia
+            { lat: 35.6762, lng: 139.6503, severity: 'medium', confidence: 0.77, size: 1.9, name: 'Tokyo Shibuya' },
+            { lat: 37.5665, lng: 126.9780, severity: 'medium', confidence: 0.74, size: 1.7, name: 'Seoul Gangnam' },
+            { lat: 31.2304, lng: 121.4737, severity: 'medium', confidence: 0.75, size: 1.8, name: 'Shanghai Yan\'an' },
+            { lat: 39.9042, lng: 116.4074, severity: 'severe', confidence: 0.89, size: 3.4, name: 'Beijing 3rd Ring' },
+            // Southeast Asia
+            { lat: 13.7563, lng: 100.5018, severity: 'severe', confidence: 0.90, size: 3.6, name: 'Bangkok Sukhumvit' },
+            { lat: 14.5995, lng: 120.9842, severity: 'severe', confidence: 0.92, size: 4.1, name: 'Manila EDSA' },
+            { lat: -6.2088, lng: 106.8456, severity: 'severe', confidence: 0.91, size: 3.9, name: 'Jakarta Gatot Subroto' },
+            { lat: 21.0278, lng: 105.8342, severity: 'severe', confidence: 0.86, size: 2.9, name: 'Hanoi National Hwy 1' },
+            // Australia
+            { lat: -33.8688, lng: 151.2093, severity: 'medium', confidence: 0.65, size: 1.1, name: 'Sydney CBD Patch' },
+            { lat: -37.8136, lng: 144.9631, severity: 'medium', confidence: 0.73, size: 1.7, name: 'Melbourne Eastern Fwy' },
+            // Central Asia
+            { lat: 41.2995, lng: 69.2401, severity: 'severe', confidence: 0.88, size: 3.2, name: 'Tashkent Ring Road' },
+            { lat: 56.8389, lng: 60.6057, severity: 'severe', confidence: 0.89, size: 3.5, name: 'Yekaterinburg EKAD' },
+            // Turkey
+            { lat: 41.0082, lng: 28.9784, severity: 'medium', confidence: 0.73, size: 1.8, name: 'Istanbul TEM' },
+            { lat: 41.0200, lng: 29.0100, severity: 'severe', confidence: 0.85, size: 2.8, name: 'Istanbul FSM Bridge Rd' },
+            { lat: 39.9208, lng: 32.8541, severity: 'medium', confidence: 0.63, size: 1.0, name: 'Ankara Ring Road' },
+        ];
+
+        const potholeDatabase = [...keralaPotholes, ...globalPotholes];
+
+        // ── MAP INIT ──
+        const map = L.map('world-map', {
+            center: [10.5276, 76.2144],
+            zoom: 8,
+            zoomControl: true,
+        });
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+            maxZoom: 19,
+        }).addTo(map);
+
+        const severityColors = { severe: '#ef4444', medium: '#f59e0b', low: '#eab308' };
+
+        // Kerala markers layer group — zoom-gated: visible only at zoom >= 13
+        // Pothole markers not rendered on map — data used only for scan & detection features
+
+        let clickMarker = null;
+        let currentLat = 10.5276, currentLng = 76.2144;
+
+        map.on('click', e => {
+            currentLat = e.latlng.lat;
+            currentLng = e.latlng.lng;
+            placeClickMarker(currentLat, currentLng);
+            document.getElementById('coordDisplay').textContent = `${currentLat.toFixed(5)}, ${currentLng.toFixed(5)}`;
+            document.getElementById('svCoords').textContent = `${currentLat.toFixed(5)}, ${currentLng.toFixed(5)}`;
+        });
+
+        function placeClickMarker(lat, lng) {
+            if (clickMarker) map.removeLayer(clickMarker);
+            const icon = L.divIcon({
+                className: '',
+                html: `<div style="width:18px;height:18px;border-radius:50%;background:#3b82f6;border:3px solid white;box-shadow:0 0 0 4px rgba(59,130,246,0.35)"></div>`,
+                iconSize: [18, 18], iconAnchor: [9, 9],
+            });
+            clickMarker = L.marker([lat, lng], { icon }).addTo(map);
+        }
+
+        // ── SEARCH ──
+        async function searchLocation() {
+            const q = document.getElementById('locationInput').value.trim();
+            if (!q) return;
+            showAlert('Searching…', 'info');
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`);
+                const data = await res.json();
+                if (data.length > 0) {
+                    const { lat, lon } = data[0];
+                    currentLat = parseFloat(lat); currentLng = parseFloat(lon);
+                    map.flyTo([currentLat, currentLng], 15, { animate: true, duration: 1.2 });
+                    placeClickMarker(currentLat, currentLng);
+                    document.getElementById('coordDisplay').textContent = `${currentLat.toFixed(5)}, ${currentLng.toFixed(5)}`;
+                    document.getElementById('svCoords').textContent = `${currentLat.toFixed(5)}, ${currentLng.toFixed(5)}`;
+                    hideAlert();
+                } else {
+                    showAlert('Location not found. Try a different name.');
+                }
+            } catch (e) { showAlert('Search failed. Check your connection.'); }
+        }
+
+        document.getElementById('locationInput').addEventListener('keypress', e => {
+            if (e.key === 'Enter') searchLocation();
+        });
+
+        // ── MY LOCATION ──
+        function gotoMyLocation() {
+            if (!navigator.geolocation) return showAlert('Geolocation not supported.');
+            showAlert('Getting your location…', 'info');
+            navigator.geolocation.getCurrentPosition(pos => {
+                currentLat = pos.coords.latitude; currentLng = pos.coords.longitude;
+                map.flyTo([currentLat, currentLng], 15);
+                placeClickMarker(currentLat, currentLng);
+                document.getElementById('coordDisplay').textContent = `${currentLat.toFixed(5)}, ${currentLng.toFixed(5)}`;
+                hideAlert();
+            }, () => showAlert('Location access denied.'));
+        }
+
+        // ── STREET VIEW ──
+        let svVisible = false;
+
+        function openStreetView() { openStreetViewAt(currentLat, currentLng); }
+
+        function openStreetViewAt(lat, lng) {
+            currentLat = lat; currentLng = lng;
+            const panel = document.getElementById('streetViewPanel');
+            const frame = document.getElementById('street-view-frame');
+            const loading = document.getElementById('svLoading');
+            const toggle = document.getElementById('svToggle');
+            const handle = document.getElementById('resizeHandle');
+
+            panel.style.display = 'flex';
+            panel.style.flexDirection = 'column';
+            handle.classList.add('visible');
+            loading.style.display = 'flex';
+            frame.style.visibility = 'hidden';
+            svVisible = true;
+            toggle.innerHTML = '<i class="fas fa-eye-slash"></i> Hide Street View';
+            toggle.onclick = closeStreetView;
+            document.getElementById('svCoords').textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+
+            const streetViewDirect = `https://www.google.com/maps?layer=c&cbll=${lat},${lng}&cbp=12,0,,0,0&output=svembed`;
+            frame.src = streetViewDirect;
+            frame.onload = () => {
+                loading.style.display = 'none';
+                frame.style.visibility = 'visible';
+            };
+            setTimeout(() => {
+                if (loading.style.display !== 'none') {
+                    loading.style.display = 'none';
+                    frame.style.visibility = 'visible';
+                }
+            }, 3000);
+        }
+
+        function closeStreetView() {
+            const panel = document.getElementById('streetViewPanel');
+            const frame = document.getElementById('street-view-frame');
+            const toggle = document.getElementById('svToggle');
+            const handle = document.getElementById('resizeHandle');
+            panel.style.display = 'none';
+            handle.classList.remove('visible');
+            frame.src = '';
+            svVisible = false;
+            toggle.innerHTML = '<i class="fas fa-street-view"></i> Street View';
+            toggle.onclick = openStreetView;
+        }
+
+        // ── ROUTING ──
+        let routePolyline = null;
+        let fromMarker = null;
+        let toMarker = null;
+        let routeActive = false;
+        let navAnimFrame = null;
+
+        function onRouteInputChange() {
+            // no-op, just allows user typing
+        }
+
+        function swapRouteInputs() {
+            const fromInput = document.getElementById('fromInput');
+            const toInput = document.getElementById('toInput');
+            const tmp = fromInput.value;
+            fromInput.value = toInput.value;
+            toInput.value = tmp;
+        }
+
+        async function geocode(query) {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+            const data = await res.json();
+            if (data.length === 0) return null;
+            return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), display: data[0].display_name };
+        }
+
+        async function getRoute() {
+            const fromVal = document.getElementById('fromInput').value.trim();
+            const toVal = document.getElementById('toInput').value.trim();
+            if (!fromVal || !toVal) return showAlert('Please enter both From and To locations.', 'danger');
+
+            showAlert('Finding route…', 'info');
+
+            try {
+                const [fromCoord, toCoord] = await Promise.all([geocode(fromVal), geocode(toVal)]);
+                if (!fromCoord) return showAlert(`Could not find: "${fromVal}"`);
+                if (!toCoord) return showAlert(`Could not find: "${toVal}"`);
+
+                // Clear previous route
+                clearRouteLayer();
+
+                // Place endpoint markers
+                fromMarker = L.marker([fromCoord.lat, fromCoord.lng], {
+                    icon: L.divIcon({
+                        className: '',
+                        html: `<div style="width:22px;height:22px;background:#3b82f6;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid white;box-shadow:0 2px 8px rgba(59,130,246,0.6)"></div>`,
+                        iconSize: [22, 22], iconAnchor: [11, 22]
+                    })
+                }).addTo(map).bindPopup(`<b>From:</b> ${fromVal}`);
+
+                toMarker = L.marker([toCoord.lat, toCoord.lng], {
+                    icon: L.divIcon({
+                        className: '',
+                        html: `<div style="width:22px;height:22px;background:#ef4444;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid white;box-shadow:0 2px 8px rgba(239,68,68,0.6)"></div>`,
+                        iconSize: [22, 22], iconAnchor: [11, 22]
+                    })
+                }).addTo(map).bindPopup(`<b>To:</b> ${toVal}`);
+
+                // Fetch route from OSRM
+                const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${fromCoord.lng},${fromCoord.lat};${toCoord.lng},${toCoord.lat}?overview=full&geometries=geojson`;
+                const routeRes = await fetch(osrmUrl);
+                const routeData = await routeRes.json();
+
+                if (!routeData.routes || routeData.routes.length === 0) {
+                    return showAlert('No route found between these locations.');
+                }
+
+                const route = routeData.routes[0];
+                const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
+
+                // Draw animated blue polyline
+                routePolyline = L.polyline(coords, {
+                    color: '#3b82f6',
+                    weight: 5,
+                    opacity: 0.85,
+                    lineJoin: 'round',
+                    lineCap: 'round',
+                }).addTo(map);
+
+                // Casing (darker outline)
+                L.polyline(coords, {
+                    color: '#1d4ed8',
+                    weight: 8,
+                    opacity: 0.3,
+                    lineJoin: 'round',
+                    lineCap: 'round',
+                }).addTo(map);
+
+                map.fitBounds(routePolyline.getBounds(), { padding: [60, 60] });
+
+                // Compute stats
+                const distKm = (route.distance / 1000).toFixed(1);
+                const mins = Math.round(route.duration / 60);
+                const hours = Math.floor(mins / 60);
+                const remMins = mins % 60;
+                const timeStr = hours > 0 ? `${hours}h ${remMins}m` : `${mins} min`;
+
+                document.getElementById('routeDistance').textContent = `${distKm} km`;
+                document.getElementById('routeTime').textContent = timeStr;
+
+                // Check for potholes along route
+                const bbox = routePolyline.getBounds();
+                const hazardsOnRoute = potholeDatabase.filter(p =>
+                    bbox.contains([p.lat, p.lng])
+                );
+                const severeOnRoute = hazardsOnRoute.filter(p => p.severity === 'severe').length;
+                const warnEl = document.getElementById('routeHazardWarn');
+                const warnText = document.getElementById('routeHazardText');
+                if (hazardsOnRoute.length === 0) {
+                    warnEl.className = 'route-hazard-warn ok';
+                    warnEl.querySelector('i').className = 'fas fa-circle-check';
+                    warnText.textContent = 'Route is clear of known hazards';
+                } else {
+                    warnEl.className = 'route-hazard-warn danger';
+                    warnEl.querySelector('i').className = 'fas fa-triangle-exclamation';
+                    warnText.textContent = `${hazardsOnRoute.length} hazards on route (${severeOnRoute} severe)`;
+                }
+
+                document.getElementById('routeInfoBar').classList.add('visible');
+                document.getElementById('startNavBtn').classList.add('visible');
+                document.getElementById('navActiveBar').classList.remove('visible');
+                hideAlert();
+
+            } catch (e) {
+                showAlert('Route fetch failed. Check your connection.');
+                console.error(e);
+            }
+        }
+
+        function clearRouteLayer() {
+            if (routePolyline) {
+                map.eachLayer(l => {
+                    if (l instanceof L.Polyline) map.removeLayer(l);
+                });
+                routePolyline = null;
+            }
+            if (fromMarker) { map.removeLayer(fromMarker); fromMarker = null; }
+            if (toMarker) { map.removeLayer(toMarker); toMarker = null; }
+        }
+
+        function clearRoute() {
+            clearRouteLayer();
+            document.getElementById('fromInput').value = '';
+            document.getElementById('toInput').value = '';
+            document.getElementById('routeInfoBar').classList.remove('visible');
+            document.getElementById('startNavBtn').classList.remove('visible');
+            document.getElementById('navActiveBar').classList.remove('visible');
+            routeActive = false;
+            hideAlert();
+        }
+
+        function startNavigation() {
+            if (!routePolyline) return;
+            routeActive = true;
+            document.getElementById('startNavBtn').classList.remove('visible');
+            document.getElementById('navActiveBar').classList.add('visible');
+            // Zoom into the route start
+            if (fromMarker) {
+                map.flyTo(fromMarker.getLatLng(), 15, { animate: true, duration: 1.5 });
+            }
+            showAlert('Navigation started! Follow the blue route.', 'success');
+        }
+
+        function stopNavigation() {
+            routeActive = false;
+            document.getElementById('navActiveBar').classList.remove('visible');
+            document.getElementById('startNavBtn').classList.add('visible');
+            if (routePolyline) map.fitBounds(routePolyline.getBounds(), { padding: [60, 60] });
+            showAlert('Navigation stopped.', 'info');
+        }
+
+        // Allow pressing Enter in route inputs to trigger route
+        document.getElementById('fromInput').addEventListener('keypress', e => { if (e.key === 'Enter') getRoute(); });
+        document.getElementById('toInput').addEventListener('keypress', e => { if (e.key === 'Enter') getRoute(); });
+
+
+        function haversine(lat1, lng1, lat2, lng2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        }
+
+        function scanRoad() {
+            const results = potholeDatabase
+                .map(p => ({ ...p, dist: haversine(currentLat, currentLng, p.lat, p.lng) }))
+                .filter(p => p.dist <= 5)
+                .sort((a, b) => {
+                    const s = { severe: 0, medium: 1, low: 2 };
+                    return s[a.severity] - s[b.severity] || a.dist - b.dist;
+                });
+
+            const severeCount = results.filter(p => p.severity === 'severe').length;
+            const mediumCount = results.filter(p => p.severity === 'medium').length;
+            const lowCount = results.filter(p => p.severity === 'low').length;
+
+            document.getElementById('totalCount').textContent = results.length;
+            document.getElementById('areaStatSevere').textContent = severeCount;
+            document.getElementById('areaStatMild').textContent = mediumCount;
+            document.getElementById('areaStatHumps').textContent = lowCount;
+
+            let risk = 'Low';
+            if (results.some(p => p.severity === 'severe')) risk = 'Critical';
+            else if (results.some(p => p.severity === 'medium')) risk = 'High';
+            else if (results.length > 0) risk = 'Medium';
+            document.getElementById('riskDisplay').textContent = risk;
+
+            // Update both hazard lists
+            const listHtml = results.length === 0
+                ? `<div class="empty-state"><i class="fas fa-check-circle"></i><p>No potholes detected within 5km. Road appears clear!</p></div>`
+                : results.map(p => `
+            <div class="hazard-item ${p.severity}" onclick="openStreetViewAt(${p.lat},${p.lng})">
+                <div class="hz-name">${p.name}</div>
+                <div class="hz-meta">
+                    <span>📏 ${p.size}m</span>
+                    <span>🎯 ${(p.confidence * 100).toFixed(0)}%</span>
+                    <span>📍 ${p.dist.toFixed(2)}km</span>
+                </div>
+                <div class="badge ${p.severity}">${p.severity}</div>
+            </div>
+        `).join('');
+
+            document.getElementById('potholeList').innerHTML = listHtml;
+            document.getElementById('hazardList').innerHTML = listHtml;
+
+            showAlert(`Scan complete: ${results.length} hazard${results.length !== 1 ? 's' : ''} found within 5km`, 'info');
+        }
+
+        // ── RESET ──
+        function resetAll() {
+            map.flyTo([10.5276, 76.2144], 13);
+            currentLat = 10.5276; currentLng = 76.2144;
+            if (clickMarker) { map.removeLayer(clickMarker); clickMarker = null; }
+            document.getElementById('coordDisplay').textContent = 'Click map to pick location';
+            document.getElementById('totalCount').textContent = '0';
+            document.getElementById('riskDisplay').textContent = 'Low';
+            document.getElementById('locationInput').value = 'Thrissur, Kerala, India';
+            document.getElementById('areaStatSevere').textContent = '0';
+            document.getElementById('areaStatMild').textContent = '0';
+            document.getElementById('areaStatHumps').textContent = '0';
+            const emptyHtml = `<div class="empty-state"><i class="fas fa-road"></i><p>Click anywhere on the map, then tap <strong>Scan Road</strong> to detect potholes nearby.</p></div>`;
+            document.getElementById('potholeList').innerHTML = emptyHtml;
+            document.getElementById('hazardList').innerHTML = emptyHtml;
+            clearRoute();
+            closeStreetView();
+            hideAlert();
+        }
+
+        // ── MEDIA TABS ──
+        function switchMediaTab(el, type) {
+            document.querySelectorAll('.media-tab').forEach(t => t.classList.remove('active'));
+            el.classList.add('active');
+            const fileInput = document.getElementById('fileInput');
+            fileInput.accept = type === 'video' ? 'video/*' : 'image/*';
+        }
+
+        // ── FILE UPLOAD ──
+        let uploadedImageData = null;
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            document.getElementById('uploadZone').classList.add('dragover');
+        }
+        function handleDragLeave(e) {
+            document.getElementById('uploadZone').classList.remove('dragover');
+        }
+        function handleDrop(e) {
+            e.preventDefault();
+            document.getElementById('uploadZone').classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) loadImageFile(file);
+        }
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) loadImageFile(file);
+        }
+
+        function loadImageFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                uploadedImageData = e.target.result;
+                const preview = document.getElementById('uploadPreview');
+                const overlay = document.getElementById('uploadOverlay');
+                const icon = document.getElementById('uploadIcon');
+                const text = document.getElementById('uploadText');
+                const zone = document.getElementById('uploadZone');
+
+                preview.src = uploadedImageData;
+                preview.style.display = 'block';
+                overlay.style.display = 'flex';
+                icon.style.display = 'none';
+                text.style.display = 'none';
+                zone.style.padding = '0';
+                zone.style.minHeight = '100px';
+
+                document.getElementById('analyzeBtn').disabled = false;
+                showAlert('Image loaded. Click Analyze to detect potholes.', 'info');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // ── ANALYZE IMAGE ──
+        let detectionResults = [];
+
+        function analyzeImage() {
+            if (!uploadedImageData) return;
+
+            // Open modal
+            document.getElementById('detectionPanel').classList.add('visible');
+            document.getElementById('analyzingOverlay').style.display = 'flex';
+            document.getElementById('detSevereCount').textContent = '—';
+            document.getElementById('detMildCount').textContent = '—';
+            document.getElementById('detTotalCount').textContent = '—';
+            document.getElementById('detItemsList').innerHTML = `<div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>Analyzing image…</p></div>`;
+
+            // Draw the image on canvas first
+            const canvas = document.getElementById('detectionCanvas');
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+            img.onload = () => {
+                // Set canvas size
+                const maxW = 640, maxH = 480;
+                let w = img.width, h = img.height;
+                if (w > maxW) { h = h * maxW / w; w = maxW; }
+                if (h > maxH) { w = w * maxH / h; h = maxH; }
+                canvas.width = w;
+                canvas.height = h;
+                ctx.drawImage(img, 0, 0, w, h);
+
+                // Simulate scan progress
+                simulateScan(canvas, ctx, img, w, h);
+            };
+            img.src = uploadedImageData;
+        }
+
+        function simulateScan(canvas, ctx, img, w, h) {
+            const progressBar = document.getElementById('progressBar');
+            const analyzingText = document.getElementById('analyzingText');
+            const steps = [
+                [10, 'LOADING IMAGE…'],
+                [30, 'PREPROCESSING FRAMES…'],
+                [50, 'RUNNING DETECTION MODEL…'],
+                [70, 'CLASSIFYING SEVERITY…'],
+                [90, 'MAPPING COORDINATES…'],
+                [100, 'COMPLETE'],
+            ];
+
+            let step = 0;
+            const interval = setInterval(() => {
+                if (step >= steps.length) {
+                    clearInterval(interval);
+                    // Generate detection results
+                    detectionResults = generateDetections(w, h);
+                    renderDetections(canvas, ctx, img, w, h, detectionResults);
+                    return;
+                }
+                progressBar.style.width = steps[step][0] + '%';
+                analyzingText.textContent = steps[step][1];
+                step++;
+            }, 400);
+        }
+
+        function generateDetections(w, h) {
+            // Generate realistic-looking pothole detections
+            const count = Math.floor(Math.random() * 5) + 3;
+            const detections = [];
+            const severeNames = ['Deep Crater', 'Large Pothole', 'Road Collapse', 'Severe Damage', 'Major Hole'];
+            const mediumNames = ['Mild Pothole', 'Surface Crack', 'Road Damage', 'Shallow Hole', 'Wear Patch'];
+
+            // Generate non-overlapping ellipses
+            const placed = [];
+            for (let i = 0; i < count; i++) {
+                let attempts = 0;
+                let ok = false;
+                let cx, cy, rx, ry;
+                while (!ok && attempts < 30) {
+                    cx = w * 0.1 + Math.random() * w * 0.8;
+                    cy = h * 0.2 + Math.random() * h * 0.6;
+                    const severity = Math.random() < 0.5 ? 'severe' : 'medium';
+                    rx = severity === 'severe' ? 40 + Math.random() * 35 : 25 + Math.random() * 25;
+                    ry = rx * (0.55 + Math.random() * 0.3);
+
+                    // Check overlap
+                    let overlap = false;
+                    for (const p of placed) {
+                        const dx = cx - p.cx, dy = cy - p.cy;
+                        if (Math.sqrt(dx * dx + dy * dy) < p.rx + rx + 10) { overlap = true; break; }
+                    }
+                    if (!overlap) { ok = true; }
+                    attempts++;
+                }
+                if (!ok) continue;
+
+                const severity = Math.random() < 0.5 ? 'severe' : 'medium';
+                const conf = severity === 'severe' ? 0.80 + Math.random() * 0.18 : 0.60 + Math.random() * 0.28;
+                const sizeM = severity === 'severe' ? (1.5 + Math.random() * 2.5).toFixed(1) : (0.5 + Math.random() * 1.5).toFixed(1);
+                const names = severity === 'severe' ? severeNames : mediumNames;
+                const det = {
+                    id: i + 1,
+                    cx, cy,
+                    rx: severity === 'severe' ? 40 + Math.random() * 35 : 25 + Math.random() * 25,
+                    ry: 0,
+                    severity,
+                    confidence: conf,
+                    sizeM,
+                    name: names[Math.floor(Math.random() * names.length)] + ` #${i + 1}`,
+                };
+                det.ry = det.rx * (0.55 + Math.random() * 0.3);
+                det.rotation = (Math.random() - 0.5) * 0.3;
+                placed.push(det);
+                detections.push(det);
+            }
+            return detections;
+        }
+
+        function renderDetections(canvas, ctx, img, w, h, detections) {
+            // Redraw image
+            ctx.clearRect(0, 0, w, h);
+            ctx.drawImage(img, 0, 0, w, h);
+
+            // Slight darkening overlay
+            ctx.fillStyle = 'rgba(0,0,0,0.15)';
+            ctx.fillRect(0, 0, w, h);
+            ctx.drawImage(img, 0, 0, w, h);
+
+            // Draw each detection
+            detections.forEach((d, idx) => {
+                const color = d.severity === 'severe' ? '#ef4444' : '#f59e0b';
+                const glow = d.severity === 'severe' ? 'rgba(239,68,68,0.4)' : 'rgba(245,158,11,0.4)';
+
+                ctx.save();
+                ctx.translate(d.cx, d.cy);
+                ctx.rotate(d.rotation);
+
+                // Glow outer ring
+                ctx.shadowColor = glow;
+                ctx.shadowBlur = 18;
+
+                // Fill tint
+                ctx.beginPath();
+                ctx.ellipse(0, 0, d.rx, d.ry, 0, 0, Math.PI * 2);
+                ctx.fillStyle = d.severity === 'severe' ? 'rgba(239,68,68,0.18)' : 'rgba(245,158,11,0.14)';
+                ctx.fill();
+
+                // Main border
+                ctx.beginPath();
+                ctx.ellipse(0, 0, d.rx, d.ry, 0, 0, Math.PI * 2);
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 3;
+                ctx.shadowBlur = 12;
+                ctx.stroke();
+
+                // Animated dashes - second ring slightly larger
+                ctx.beginPath();
+                ctx.ellipse(0, 0, d.rx + 6, d.ry + 4, 0, 0, Math.PI * 2);
+                ctx.strokeStyle = color + '55';
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([6, 4]);
+                ctx.shadowBlur = 0;
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                ctx.restore();
+
+                // Label
+                const labelX = d.cx;
+                const labelY = d.cy - d.ry - 12;
+                ctx.save();
+                ctx.shadowBlur = 0;
+                const labelText = d.severity.toUpperCase();
+                ctx.font = 'bold 10px monospace';
+                const textW = ctx.measureText(labelText).width + 12;
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.roundRect(labelX - textW / 2, labelY - 14, textW, 16, 3);
+                ctx.fill();
+                ctx.fillStyle = 'white';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(labelText, labelX, labelY - 6);
+                ctx.restore();
+            });
+
+            // Update counts
+            const severeCount = detections.filter(d => d.severity === 'severe').length;
+            const mildCount = detections.filter(d => d.severity === 'medium').length;
+            document.getElementById('detSevereCount').textContent = severeCount;
+            document.getElementById('detMildCount').textContent = mildCount;
+            document.getElementById('detTotalCount').textContent = detections.length;
+
+            // Update left panel area stats
+            document.getElementById('areaStatSevere').textContent = parseInt(document.getElementById('areaStatSevere').textContent || 0) + severeCount;
+            document.getElementById('areaStatMild').textContent = parseInt(document.getElementById('areaStatMild').textContent || 0) + mildCount;
+
+            // Populate detection items list
+            document.getElementById('detItemsList').innerHTML = detections.map(d => `
+        <div class="det-item ${d.severity}" onclick="highlightDetection(${d.id})">
+            <div class="det-item-name">${d.name}</div>
+            <div class="det-item-meta">
+                <span>📏 ${d.sizeM}m</span>
+                <span>🎯 ${(d.confidence * 100).toFixed(0)}%</span>
+            </div>
+            <div class="badge ${d.severity}">${d.severity}</div>
+        </div>
+    `).join('');
+
+            // Hide analyzing overlay
+            document.getElementById('analyzingOverlay').style.display = 'none';
+
+            // Also update left sidebar hazard list
+            document.getElementById('hazardList').innerHTML = detections.map(d => `
+        <div class="hazard-item ${d.severity}">
+            <div class="hz-name">${d.name}</div>
+            <div class="hz-meta">
+                <span>📏 ${d.sizeM}m</span>
+                <span>🎯 ${(d.confidence * 100).toFixed(0)}%</span>
+                <span>📷 Image</span>
+            </div>
+            <div class="badge ${d.severity}">${d.severity}</div>
+        </div>
+    `).join('');
+
+            showAlert(`Detection complete: ${detections.length} potholes found (${severeCount} severe, ${mildCount} mild)`, 'success');
+        }
+
+        function highlightDetection(id) {
+            // Flash the canvas to indicate highlighted detection
+            const canvas = document.getElementById('detectionCanvas');
+            canvas.style.outline = '2px solid var(--accent)';
+            setTimeout(() => { canvas.style.outline = ''; }, 400);
+        }
+
+        function closeDetectionModal() {
+            document.getElementById('detectionPanel').classList.remove('visible');
+        }
+
+        function downloadDetectionReport() {
+            const severeCount = document.getElementById('detSevereCount').textContent;
+            const mildCount = document.getElementById('detMildCount').textContent;
+            const total = document.getElementById('detTotalCount').textContent;
+            const report = `PotholeGuard Detection Report\n${'='.repeat(40)}\nDate: ${new Date().toLocaleString()}\nLocation: ${document.getElementById('coordDisplay').textContent}\n\nRESULTS\n-------\nTotal Detected: ${total}\nSevere Potholes: ${severeCount}\nMild Potholes: ${mildCount}\n\nDetailed Findings:\n${detectionResults.map((d, i) => `${i + 1}. ${d.name} (${d.severity.toUpperCase()}) - Size: ${d.sizeM}m, Confidence: ${(d.confidence * 100).toFixed(0)}%`).join('\n')}\n\nGenerated by PotholeGuard`;
+            const blob = new Blob([report], { type: 'text/plain' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'potholeGuard-report.txt';
+            a.click();
+        }
+
+        function exportData() {
+            const data = potholeDatabase.map(p => `${p.name},${p.lat},${p.lng},${p.severity},${p.size}m,${(p.confidence * 100).toFixed(0)}%`).join('\n');
+            const csv = `Name,Latitude,Longitude,Severity,Size,Confidence\n${data}`;
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'potholeGuard-data.csv';
+            a.click();
+        }
+
+        function downloadReport() {
+            const report = `PotholeGuard Road Intelligence Report\n${'='.repeat(45)}\nDate: ${new Date().toLocaleString()}\nArea: ${document.getElementById('locationInput').value}\nTotal Database Potholes: ${potholeDatabase.length}\nSevere: ${potholeDatabase.filter(p => p.severity === 'severe').length}\nMedium: ${potholeDatabase.filter(p => p.severity === 'medium').length}\nLow: ${potholeDatabase.filter(p => p.severity === 'low').length}\n\nGenerated by PotholeGuard`;
+            const blob = new Blob([report], { type: 'text/plain' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'potholeGuard-fullreport.txt';
+            a.click();
+        }
+
+        // ── ALERTS ──
+        let alertTimer;
+        function showAlert(msg, type = 'danger') {
+            clearTimeout(alertTimer);
+            const bar = document.getElementById('alertBar');
+            bar.className = `alert-bar${type === 'info' ? ' info' : type === 'success' ? ' success' : ''}`;
+            document.getElementById('alertText').textContent = msg;
+            bar.style.display = 'flex';
+            if (type !== 'info') alertTimer = setTimeout(hideAlert, 4000);
+        }
+        function hideAlert() { document.getElementById('alertBar').style.display = 'none'; }
+
+        // ── RESIZE HANDLE ──
+        const handle = document.getElementById('resizeHandle');
+        const svPanel = document.getElementById('streetViewPanel');
+        let isResizing = false;
+
+        handle.addEventListener('mousedown', e => {
+            if (!svVisible) return;
+            isResizing = true;
+            handle.classList.add('dragging');
+            document.body.style.userSelect = 'none';
+        });
+
+        document.addEventListener('mousemove', e => {
+            if (!isResizing) return;
+            const mapStack = document.querySelector('.map-stack');
+            const rect = mapStack.getBoundingClientRect();
+            const newSVH = rect.bottom - e.clientY;
+            if (newSVH > 120 && newSVH < rect.height - 200) svPanel.style.height = newSVH + 'px';
+        });
+
+        document.addEventListener('mouseup', () => {
+            isResizing = false;
+            handle.classList.remove('dragging');
+            document.body.style.userSelect = '';
+        });
+
+        // Close modal on backdrop click
+        document.getElementById('detectionPanel').addEventListener('click', e => {
+            if (e.target === document.getElementById('detectionPanel')) closeDetectionModal();
+        });
+
+        // Init
+        placeClickMarker(10.5276, 76.2144);
+        document.getElementById('coordDisplay').textContent = '10.52760, 76.21440';
+    </script>
+</body>
+
+</html>
